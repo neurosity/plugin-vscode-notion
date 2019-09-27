@@ -1,4 +1,9 @@
 import * as vscode from "vscode";
+import { Notion } from "@neurosity/notion";
+
+const mind = new Notion({
+  deviceId: "11b10dadb738145668efd7ff67620ca3"
+});
 
 let myStatusBarItem: vscode.StatusBarItem;
 
@@ -8,10 +13,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   const myCommandId = "sample.showSelectionCount";
   subscriptions.push(
     vscode.commands.registerCommand(myCommandId, () => {
-      let n = getNumberOfSelectedLines(vscode.window.activeTextEditor);
-      vscode.window.showInformationMessage(
-        `Yeah, ${n} line(s) selected... Keep going!`
-      );
+      vscode.window.showInformationMessage(`Calm down!`);
     })
   );
 
@@ -23,38 +25,11 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   myStatusBarItem.command = myCommandId;
   subscriptions.push(myStatusBarItem);
 
-  // register some listener that make sure the status bar
-  // item always up-to-date
-  subscriptions.push(
-    vscode.window.onDidChangeActiveTextEditor(updateStatusBarItem)
-  );
-  subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection(updateStatusBarItem)
-  );
+  mind.calm().subscribe(({ probability }) => {
+    const score = (probability * 100).toFixed(2);
+    myStatusBarItem.text = `$(pulse) calm: ${score}%`;
+  });
 
-  // update status bar item once at start
-  updateStatusBarItem();
-}
-
-function updateStatusBarItem(): void {
-  let n = getNumberOfSelectedLines(vscode.window.activeTextEditor);
-  if (n > 0) {
-    myStatusBarItem.text = `$(megaphone) ${n} line(s) selected`;
-    myStatusBarItem.show();
-  } else {
-    myStatusBarItem.hide();
-  }
-}
-
-function getNumberOfSelectedLines(
-  editor: vscode.TextEditor | undefined
-): number {
-  let lines = 0;
-  if (editor) {
-    lines = editor.selections.reduce(
-      (prev, curr) => prev + (curr.end.line - curr.start.line),
-      0
-    );
-  }
-  return lines;
+  myStatusBarItem.text = `$(pulse) calm`;
+  myStatusBarItem.show();
 }
