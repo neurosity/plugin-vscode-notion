@@ -1,0 +1,37 @@
+{
+  "name": "plugin-vscode-notion",
+  "displayName": "Notion Developer Assistant",
+  "version": "1.0.0",
+  "description": "Notion VS Code Plugin",
+  "main": "./build/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "build": "tsc -p ./",
+    "lint": "tslint -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "activationEvents": [
+    "*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neurosity/plugin-vscode-notion.git"
+  },
+  "keywords": [
+    "notion",
+    "vscode"
+  ],
+  "author": "Alex Castillo and AJ Keller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/neurosity/plugin-vscode-notion/issues"
+  },
+  "homepage": "https://github.com/neurosity/plugin-vscode-notion#readme",
+  "devDependencies": {
+    "@types/vscode": "^1.38.0",
+    "typescript": "^3.6.3"
+  },
+  "engines": {
+    "vscode": "^1.32.0"
+  }
+}
