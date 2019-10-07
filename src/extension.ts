@@ -1,5 +1,8 @@
 import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
+import { filter, map, scan } from "rxjs/operators";
+
+import { mapRange } from "./utils";
 
 const mind = new Notion({
   deviceId: "11b10dadb738145668efd7ff67620ca3"
@@ -58,7 +61,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   );
 
   kinesisStatusBarItem.text = `${kinesisIcon} ${kinesisDescription} ░░░░░░░`;
-  kinesisStatusBarItem.show();
+  //kinesisStatusBarItem.show();
 
   /**
    * Calm
@@ -71,11 +74,18 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   myStatusBarItem.command = myCommandId;
   subscriptions.push(myStatusBarItem);
 
-  mind.calm().subscribe(({ probability }) => {
-    let distraction: any = 100 - Math.round(probability * 100); // reverse calm
-    if (distraction < 10) distraction = " " + distraction;
-    myStatusBarItem.text = `$(hubot) ${distraction}% mind focus`;
-  });
+  mind
+    .calm()
+    .pipe(
+      filter(({ probability }: any) => probability > 0.15),
+      map(({ probability }: any): number =>
+        mapRange(probability, 0, 1, 1, 5)
+      ),
+      scan((score, points) => Math.round(score + points), 0)
+    )
+    .subscribe(score => {
+      myStatusBarItem.text = `$(hubot) ${score} mind points`;
+    });
 
   myStatusBarItem.text = `$(hubot)`;
   myStatusBarItem.show();
