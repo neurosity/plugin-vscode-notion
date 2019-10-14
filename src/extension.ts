@@ -4,14 +4,30 @@ import { filter, map, scan } from "rxjs/operators";
 
 import { mapRange } from "./utils";
 
-const mind = new Notion({
-  deviceId: "11b10dadb738145668efd7ff67620ca3"
-});
-
 let myStatusBarItem: vscode.StatusBarItem;
 let kinesisStatusBarItem: vscode.StatusBarItem;
 
-export function activate({ subscriptions }: vscode.ExtensionContext) {
+export async function activate({
+  subscriptions
+}: vscode.ExtensionContext) {
+  const config = vscode.workspace.getConfiguration("notion");
+  const deviceId = config.get("deviceId");
+  const email = config.get("email");
+  const password = config.get("password");
+
+  if (!deviceId || !email || !password) {
+    return;
+  }
+
+  const notion = new Notion({
+    deviceId
+  });
+
+  await notion.login({
+    email,
+    password
+  });
+
   const myCommandId = "sample.showSelectionCount";
   subscriptions.push(
     vscode.commands.registerCommand(myCommandId, () => {
@@ -23,7 +39,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
    * Kinesis
    */
   const kinesisLabel = "rightHandPinch";
-  mind.kinesis(kinesisLabel).subscribe(() => {
+  notion.kinesis(kinesisLabel).subscribe(() => {
     vscode.commands.executeCommand("editorScroll", {
       to: "down",
       by: "line"
@@ -33,7 +49,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   const kinesisIcon = `$(rocket)`;
   let kinesisDescription = `mind control`;
 
-  mind.predictions(kinesisLabel).subscribe(({ probability }) => {
+  notion.predictions(kinesisLabel).subscribe(({ probability }) => {
     const score = Math.round(probability * 100); // +50 treshold for transfer learning
     //kinesisDescription = `hands free`;
 
@@ -74,7 +90,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
   myStatusBarItem.command = myCommandId;
   subscriptions.push(myStatusBarItem);
 
-  mind
+  notion
     .calm()
     .pipe(
       filter(({ probability }: any) => probability > 0.15),
