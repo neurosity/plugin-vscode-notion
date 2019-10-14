@@ -10,6 +10,26 @@
     "lint": "tslint -p ./",
     "watch": "tsc -watch -p ./"
   },
+  "contributes": {
+    "configuration": {
+      "title": "Notion",
+      "properties": {
+        "notion.email": {
+          "type": "string",
+          "format": "email",
+          "default": ""
+        },
+        "notion.password": {
+          "type": "string",
+          "default": ""
+        },
+        "notion.deviceId": {
+          "type": "string",
+          "default": ""
+        }
+      }
+    }
+  },
   "activationEvents": [
     "*"
   ],
@@ -35,7 +55,7 @@
     "vscode": "^1.32.0"
   },
   "dependencies": {
-    "@neurosity/notion": "^2.7.0",
+    "@neurosity/notion": "^3.1.1",
     "rxjs": "^6.5.3"
   }
 }

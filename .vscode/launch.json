@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Extension",
+      "name": "Notion",
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
