@@ -173,6 +173,7 @@ export async function activate({
   let currentMindState = states.flow;
 
   let notionTime = 0;
+  let realTime = 0;
 
   setInterval(() => {
     if (currentStatus.charging === false || ignoreIsCharging) {
