@@ -8,7 +8,7 @@ let myStatusBarItem: vscode.StatusBarItem;
 let mindStateStatusBarItem: vscode.StatusBarItem;
 let kinesisStatusBarItem: vscode.StatusBarItem;
 
-const ignoreIsCharging = true;
+const ignoreIsCharging = false;
 
 export async function activate({
   subscriptions
@@ -175,15 +175,22 @@ export async function activate({
   let notionTime = 0;
   let realTime = 0;
 
+  function getTimeStr(time: number) {
+    const timeInSeconds = Math.round(time%60);
+    const timeInMinutes = Math.round((time - timeInSeconds)/60);
+    return `${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
+  }
+
   setInterval(() => {
     if (currentStatus.charging === false || ignoreIsCharging) {
       notionTime += currentMindState.timeMultiplier;
+      realTime += 1;
     }
-    const timeInSeconds = Math.round(notionTime%60);
-    const timeInMinutes = Math.round((notionTime - timeInSeconds)/60);
-
-    console.log(`${currentMindState.str} Notion time ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`)
-    mindStateStatusBarItem.text = `Notion time: ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
+    
+    const notionTimeStr = getTimeStr(notionTime);
+    const realTimeStr = getTimeStr(realTime);
+    console.log(`${currentMindState.str} Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`)
+    mindStateStatusBarItem.text = `Mind State: ${currentMindState.str} | Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`;
 
   }, 1000);
 
@@ -234,15 +241,15 @@ export async function activate({
       scan((score, points) => Math.round(score + points), 0)
     )
     .subscribe(score => {
-      myStatusBarItem.text = `$(hubot) ${score} productivty points`;
-      if (currentStatus.connected && currentStatus.charging === false) {
-        myStatusBarItem.show();
-      }
+      // myStatusBarItem.text = `$(hubot) ${score} productivty points`;
+      // if (currentStatus.connected && currentStatus.charging === false) {
+      //   myStatusBarItem.show();
+      // }
     });
 
-  myStatusBarItem.text = `$(hubot)`;
-  if (currentStatus.connected) {
-    myStatusBarItem.show();
-  }
+  // myStatusBarItem.text = `$(hubot)`;
+  // if (currentStatus.connected) {
+  //   myStatusBarItem.show();
+  // }
 
 }
