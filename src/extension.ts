@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
-import { filter, map, scan, bufferCount } from "rxjs/operators";
+import { filter, map, scan, bufferCount, tap } from "rxjs/operators";
 
 import { mapRange } from "./utils";
 
@@ -8,13 +8,15 @@ let myStatusBarItem: vscode.StatusBarItem;
 let mindStateStatusBarItem: vscode.StatusBarItem;
 let kinesisStatusBarItem: vscode.StatusBarItem;
 
+const ignoreIsCharging = true;
+
 export async function activate({
   subscriptions
 }: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("notion");
-  const deviceId = config.get("deviceId");
-  const email = config.get("email");
-  const password = config.get("password");
+  const deviceId: string = config.get("deviceId") || "";
+  const email: string  = config.get("email") || "";
+  const password: string  = config.get("password") || "";
 
   if (!deviceId || !email || !password) {
     return;
@@ -29,10 +31,38 @@ export async function activate({
     password
   });
 
-  const myCommandId = "sample.showSelectionCount";
+  let currentStatus = {
+    charging: false,
+    connected: false
+  };
+  let runningAverageScore = 0.0;
+  notion.status().subscribe((status: any) => {
+    currentStatus = status;
+    console.log("status", currentStatus)
+    if (currentStatus.charging || ignoreIsCharging) {
+      mindStateStatusBarItem.text = `Notion can't be used while charging`;
+      myStatusBarItem.hide();
+    }
+  });
+  // notion.brainwaves("powerByBand").subscribe(powerByBand => {
+  //   let sumPower = 0;
+  //   for (let i = 0; i < 8; i++) {
+  //     sumPower += powerByBand.data.beta[i];
+  //   }
+  //   console.log("powerByBand", sumPower/8);
+  // });
+
+  const notionConnectedCommandId = "notion.showConnectionStatus";
   subscriptions.push(
-    vscode.commands.registerCommand(myCommandId, () => {
-      //vscode.window.showInformationMessage(`Calm down!`);
+    vscode.commands.registerCommand(notionConnectedCommandId, () => {
+      vscode.window.showInformationMessage(`Notion ${currentStatus.connected ? "is" : "is not"} connected`);
+    })
+  );
+
+  const notionAvgScoreCommandId = "notion.showAverageScore";
+  subscriptions.push(
+    vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
+      vscode.window.showInformationMessage(`Average flow score is ${runningAverageScore}`);
     })
   );
 
@@ -88,7 +118,7 @@ export async function activate({
     vscode.StatusBarAlignment.Right,
     999
   );
-  mindStateStatusBarItem.command = myCommandId;
+  mindStateStatusBarItem.command = notionAvgScoreCommandId;
   subscriptions.push(mindStateStatusBarItem);
 
 
@@ -96,44 +126,101 @@ export async function activate({
     vscode.StatusBarAlignment.Right,
     998
   );
-  myStatusBarItem.command = myCommandId;
+  myStatusBarItem.command = notionConnectedCommandId;
   subscriptions.push(myStatusBarItem);
 
   const maxScorePerSecond = 3;
 
-  let currentMindState = "";
-  const kMindStateDistracted = "Distracted";
-  const kMindStateGrind = "Grind";
-  const kMindStateIterate = "Iterate";
-  const kMindStateCreate = "Create";
-  const kMindStateFlow = "Flow";
+
+  let states = {
+    distracted: {
+      limit: {
+        calm: 0.1
+      },
+      str: "Distracted",
+      timeMultiplier: 0
+    },
+    grind: {
+      limit: {
+        calm: 0.12
+      },
+      str: "Grind",
+      timeMultiplier: 0.25
+    },
+    iterate: {
+      limit: {
+        calm: 0.15
+      },
+      str: "Iterate",
+      timeMultiplier: 0.5
+    },
+    create: {
+      limit: {
+        calm: 0.24
+      },
+      str: "Create",
+      timeMultiplier: 0.75
+    },
+    flow: {
+      limit: {
+        calm: 1.0
+      },
+      str: "Flow",
+      timeMultiplier: 1
+    }
+  }
+
+  let currentMindState = states.flow;
+
+  let notionTime = 0;
+
+  setInterval(() => {
+    if (currentStatus.charging === false || ignoreIsCharging) {
+      notionTime += currentMindState.timeMultiplier;
+    }
+    const timeInSeconds = Math.round(notionTime%60);
+    const timeInMinutes = Math.round((notionTime - timeInSeconds)/60);
+
+    console.log(`${currentMindState.str} Notion time ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`)
+    mindStateStatusBarItem.text = `Notion time: ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
+
+  }, 1000);
 
   notion
     .calm()
     .pipe(
-      bufferCount(60, 15)
+      bufferCount(30, 5)
     )
-    .subscribe((values) => {
-      let sum = 0;
-      values.forEach(element => {
-        sum += element;
-      });
-      const avg = sum / values.length;
-      if (avg < 0.15) {
-        currentMindState = kMindStateDistracted;
-      } else if (avg < 0.2) {
-        currentMindState = kMindStateGrind;
-      } else if (avg < 0.3) {
-        currentMindState = kMindStateIterate;
-      } else if (avg < 0.4) {
-        currentMindState = kMindStateCreate;
+    .subscribe((values: object[]) => {
+      if (currentStatus.connected == false) {
+        mindStateStatusBarItem.text = `Notion is not connected`;
+      // } else if (currentStatus.charging) {
+        // mindStateStatusBarItem.text = `Notion can't be used while charging`;
       } else {
-        currentMindState = kMindStateFlow;
+        
+        let sum = 0;
+        values.forEach((metric: any) => {
+          sum += metric.probability;
+        });
+        const avg = sum / values.length;
+        console.log(`Average score ${avg}`);
+        runningAverageScore = avg;
+        for (let key in states) {
+          // console.log("key", key, "limit", states[key].limit.calm)
+          if (avg < states[key].limit.calm) {
+            currentMindState = states[key];
+            console.log(`Current mind state: ${currentMindState.str}`);
+            break;
+          }
+        }
+        // const timeInSeconds = Math.round(notionTime%60);
+        // const timeInMinutes = Math.round((notionTime - timeInSeconds)/60);
+        // mindStateStatusBarItem.text = `Notion time: ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
       }
-      mindStateStatusBarItem.text = `Mind state: ${currentMindState}`;
+      
     })
 
-  mindStateStatusBarItem.text = `$(hubot)`;
+  mindStateStatusBarItem.text = `Notion time spooling up`;
   mindStateStatusBarItem.show();
 
   notion
@@ -147,8 +234,14 @@ export async function activate({
     )
     .subscribe(score => {
       myStatusBarItem.text = `$(hubot) ${score} productivty points`;
+      if (currentStatus.connected && currentStatus.charging === false) {
+        myStatusBarItem.show();
+      }
     });
 
   myStatusBarItem.text = `$(hubot)`;
-  myStatusBarItem.show();
+  if (currentStatus.connected) {
+    myStatusBarItem.show();
+  }
+
 }
