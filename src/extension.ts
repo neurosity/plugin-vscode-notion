@@ -15,8 +15,8 @@ export async function activate({
 }: vscode.ExtensionContext) {
   const config = vscode.workspace.getConfiguration("notion");
   const deviceId: string = config.get("deviceId") || "";
-  const email: string  = config.get("email") || "";
-  const password: string  = config.get("password") || "";
+  const email: string = config.get("email") || "";
+  const password: string = config.get("password") || "";
 
   if (!deviceId || !email || !password) {
     return;
@@ -38,7 +38,7 @@ export async function activate({
   let runningAverageScore = 0.0;
   notion.status().subscribe((status: any) => {
     currentStatus = status;
-    console.log("status", currentStatus)
+    console.log("status", currentStatus);
     if (currentStatus.charging || ignoreIsCharging) {
       mindStateStatusBarItem.text = `Notion can't be used while charging`;
       myStatusBarItem.hide();
@@ -55,14 +55,18 @@ export async function activate({
   const notionConnectedCommandId = "notion.showConnectionStatus";
   subscriptions.push(
     vscode.commands.registerCommand(notionConnectedCommandId, () => {
-      vscode.window.showInformationMessage(`Notion ${currentStatus.connected ? "is" : "is not"} connected`);
+      vscode.window.showInformationMessage(
+        `Notion ${currentStatus.connected ? "is" : "is not"} connected`
+      );
     })
   );
 
   const notionAvgScoreCommandId = "notion.showAverageScore";
   subscriptions.push(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
-      vscode.window.showInformationMessage(`Average flow score is ${runningAverageScore}`);
+      vscode.window.showInformationMessage(
+        `Average flow score is ${runningAverageScore}`
+      );
     })
   );
 
@@ -121,7 +125,6 @@ export async function activate({
   mindStateStatusBarItem.command = notionAvgScoreCommandId;
   subscriptions.push(mindStateStatusBarItem);
 
-
   myStatusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     998
@@ -131,8 +134,7 @@ export async function activate({
 
   const maxScorePerSecond = 3;
 
-
-  let states = {
+  let states: any = {
     distracted: {
       limit: {
         calm: 0.1
@@ -168,7 +170,7 @@ export async function activate({
       str: "Flow",
       timeMultiplier: 1
     }
-  }
+  };
 
   let currentMindState = states.flow;
 
@@ -176,9 +178,11 @@ export async function activate({
   let realTime = 0;
 
   function getTimeStr(time: number) {
-    const timeInSeconds = Math.round(time%60);
-    const timeInMinutes = Math.round((time - timeInSeconds)/60);
-    return `${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
+    const timeInSeconds = Math.round(time % 60);
+    const timeInMinutes = Math.round((time - timeInSeconds) / 60);
+    return `${timeInMinutes}:${
+      timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds
+    }`;
   }
 
   setInterval(() => {
@@ -186,26 +190,24 @@ export async function activate({
       notionTime += currentMindState.timeMultiplier;
       realTime += 1;
     }
-    
+
     const notionTimeStr = getTimeStr(notionTime);
     const realTimeStr = getTimeStr(realTime);
-    console.log(`${currentMindState.str} Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`)
+    console.log(
+      `${currentMindState.str} Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`
+    );
     mindStateStatusBarItem.text = `Mind State: ${currentMindState.str} | Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`;
-
   }, 1000);
 
   notion
     .calm()
-    .pipe(
-      bufferCount(30, 5)
-    )
+    .pipe(bufferCount(30, 5))
     .subscribe((values: object[]) => {
       if (currentStatus.connected == false) {
         mindStateStatusBarItem.text = `Notion is not connected`;
-      // } else if (currentStatus.charging) {
+        // } else if (currentStatus.charging) {
         // mindStateStatusBarItem.text = `Notion can't be used while charging`;
       } else {
-        
         let sum = 0;
         values.forEach((metric: any) => {
           sum += metric.probability;
@@ -225,8 +227,7 @@ export async function activate({
         // const timeInMinutes = Math.round((notionTime - timeInSeconds)/60);
         // mindStateStatusBarItem.text = `Notion time: ${timeInMinutes}:${timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds}`;
       }
-      
-    })
+    });
 
   mindStateStatusBarItem.text = `Notion time spooling up`;
   mindStateStatusBarItem.show();
@@ -251,5 +252,4 @@ export async function activate({
   // if (currentStatus.connected) {
   //   myStatusBarItem.show();
   // }
-
 }
