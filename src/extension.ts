@@ -135,6 +135,13 @@ export async function activate({
   const maxScorePerSecond = 3;
 
   let states: any = {
+    initializing: {
+      limit: {
+        calm: 0
+      },
+      str: "Initializing",
+      timeMultiplier: 0
+    },
     distracted: {
       limit: {
         calm: 0.1
@@ -172,7 +179,7 @@ export async function activate({
     }
   };
 
-  let currentMindState = states.flow;
+  let currentMindState = states.initializing;
 
   let notionTime = 0;
   let realTime = 0;
@@ -186,17 +193,20 @@ export async function activate({
   }
 
   setInterval(() => {
-    if (currentStatus.charging === false || ignoreIsCharging) {
-      notionTime += currentMindState.timeMultiplier;
-      realTime += 1;
+    if (currentMindState === states.initializing) {
+      mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
+    } else {
+      if (currentStatus.charging === false || ignoreIsCharging) {
+        notionTime += currentMindState.timeMultiplier;
+        realTime += 1;
+      }
+      
+      const notionTimeStr = getTimeStr(notionTime);
+      const realTimeStr = getTimeStr(realTime);
+      console.log(`${currentMindState.str} Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`)
+      
+      mindStateStatusBarItem.text = `Mind State: ${currentMindState.str} | Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`;
     }
-
-    const notionTimeStr = getTimeStr(notionTime);
-    const realTimeStr = getTimeStr(realTime);
-    console.log(
-      `${currentMindState.str} Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`
-    );
-    mindStateStatusBarItem.text = `Mind State: ${currentMindState.str} | Notion time: ${notionTimeStr} | Real time: ${realTimeStr}`;
   }, 1000);
 
   notion
