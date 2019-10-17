@@ -231,7 +231,7 @@ export async function activate({
 
   notion
     .calm()
-    .pipe(bufferCount(15, 1))
+    .pipe(bufferCount(30, 5))
     .subscribe((values: object[]) => {
       if (currentStatus.connected == false) {
         mindStateStatusBarItem.text = `Notion is not connected`;
