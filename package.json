@@ -56,6 +56,9 @@
   },
   "dependencies": {
     "@neurosity/notion": "^3.3.0",
-    "rxjs": "^6.5.3"
+    "@types/universal-analytics": "^0.4.3",
+    "electron-google-analytics": "^0.1.0",
+    "rxjs": "^6.5.3",
+    "universal-analytics": "^0.4.20"
   }
 }
