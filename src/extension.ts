@@ -203,12 +203,22 @@ export async function activate({
   let notionTime = 0;
   let realTime = 0;
 
+  function padLeftZero(time: number) {
+    return `${time < 10 ? `0${time}` : time}`;
+  }
+
   function getTimeStr(time: number) {
     const timeInSeconds = Math.round(time % 60);
-    const timeInMinutes = Math.round((time - timeInSeconds) / 60);
-    return `${timeInMinutes}:${
-      timeInSeconds < 10 ? `0${timeInSeconds}` : timeInSeconds
-    }`;
+    let timeInMinutes = Math.round((time - timeInSeconds) / 60);
+    if (timeInMinutes < 60) {
+      return `${timeInMinutes}:${padLeftZero(timeInSeconds)}`;
+    } else {
+      const timeInHours = Math.floor(timeInMinutes / 60);
+      timeInMinutes = timeInMinutes % 60;
+      return `${timeInHours}:${padLeftZero(timeInMinutes)}:${padLeftZero(
+        timeInSeconds
+      )}`;
+    }
   }
 
   setInterval(() => {
