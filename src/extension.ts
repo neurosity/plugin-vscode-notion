@@ -43,9 +43,17 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
 
   subscriptions.push(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
-      vscode.window.showInformationMessage(
-        `Average flow score is ${runningAverageScore}`
-      );
+      const notionTimeStr = getTimeStr(notionTime);
+      const realTimeStr = getTimeStr(realTime);
+      let msg = "";
+      if (currentStatus.charging) {
+        msg = "Invest in yourself, unplug Notion and get in the zone.";
+      } else if (currentStatus.connected) {
+        msg = `Notion time: ${notionTimeStr} | Earth time: ${realTimeStr}`;
+      } else {
+        msg = `Notion is not connected`;
+      }
+      vscode.window.showInformationMessage(msg);
     })
   );
 
@@ -56,7 +64,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
     return;
   }
 
-  mindStateStatusBarItem.text = `Notion time spooling up`;
+  mindStateStatusBarItem.text = "Notion";
 
   const usr = ua("UA-119018391-2", { uid: deviceId });
 
@@ -92,8 +100,8 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
       .send();
   };
 
-  usr.event("notion_interaction", "Flow State", "state", 1).send();
-  usr.event("notion_interaction", "Flow State", "state", 2).send();
+  usr.event("notion_interaction", "VSCode Session Started");
+
   const notion = new Notion({
     deviceId
   });
@@ -173,7 +181,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
     },
     create: {
       limit: {
-        calm: 0.3
+        calm: 0.25
       },
       str: "4 of 5",
       star: " ****",
@@ -196,7 +204,8 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   let notionTime = 0;
   let realTime = 0;
   let paceArray: number[] = [];
-  for (let i = 0; i < 60; i++) {
+  const paceArrayLength = 50 * 5;
+  for (let i = 0; i < paceArrayLength; i++) {
     paceArray.push(0);
   }
 
@@ -223,6 +232,9 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   setInterval(() => {
     if (currentStatus.connected === false) {
       mindStateStatusBarItem.text = `Notion not connected`;
+    } else if (currentStatus.charging) {
+      mindStateStatusBarItem.text =
+        "$(circle-slash) Notion is charging. $(circle-slash)";
     } else if (currentMindState === states.initializing) {
       mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
     } else {
@@ -232,20 +244,14 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
         realTime += 1;
       }
 
-      if (paceArray.length > 60) {
+      if (paceArray.length > paceArrayLength) {
         paceArray.shift();
       }
 
-      const paceTimeStr = getTimeStr(sumArray(paceArray) * 60); // multiply pace time by 60 to exterpolate an hour
-      const notionTimeStr = getTimeStr(notionTime);
-      const realTimeStr = getTimeStr(realTime);
+      const paceTimeStr = getTimeStr(sumArray(paceArray) * 12); // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
       let str = "";
-      if (paceArray.length < 60) {
-        str = `Stage ${currentMindState.str} | Notion time: ${notionTimeStr} | Earth time: ${realTimeStr}`;
-      } else {
-        str = `Stage ${currentMindState.str} | Notion time: ${notionTimeStr} | Earth time: ${realTimeStr} | Pace: ${paceTimeStr}/hour`;
-      }
-
+      const runningAverageStr = (runningAverageScore * 100).toFixed(0);
+      str = `Stage ${currentMindState.str} w/ pace of ${paceTimeStr}/hour w/ score ${runningAverageStr})`;
       mindStateStatusBarItem.text = str;
     }
   }, 1000);
@@ -254,11 +260,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
     .calm()
     .pipe(bufferCount(30, 5))
     .subscribe((values: object[]) => {
-      if (currentStatus.connected == false) {
-        mindStateStatusBarItem.text = `Notion is not connected`;
-      } else if (currentStatus.charging) {
-        mindStateStatusBarItem.text = `Notion can't be used while charging`;
-      } else {
+      if (currentStatus.connected && currentStatus.charging === false) {
         let sum = 0;
         values.forEach((metric: any) => {
           sum += metric.probability;
