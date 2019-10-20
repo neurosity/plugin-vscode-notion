@@ -1,6 +1,9 @@
 import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
+import { Chart } from "frappe-charts";
 import { filter, map, scan, bufferCount, tap } from "rxjs/operators";
+import * as doNotDisturb from "@sindresorhus/do-not-disturb";
+
 // import Analytics from "electron-google-analytics";
 import * as ua from "universal-analytics";
 
@@ -12,7 +15,8 @@ let kinesisStatusBarItem: vscode.StatusBarItem;
 
 const ignoreIsCharging = false;
 
-export async function activate({ subscriptions }: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
+  const { subscriptions } = context;
   const config = vscode.workspace.getConfiguration("notion");
   const deviceId: string = config.get("deviceId") || "";
   const email: string = config.get("email") || "";
@@ -41,19 +45,81 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
     })
   );
 
+  function getWebviewContent() {
+    const notionTimeStr = getTimeStr(notionTime);
+    const realTimeStr = getTimeStr(realTime);
+
+    let msg = "";
+    if (currentStatus.charging) {
+      msg = "Invest in yourself, unplug Notion and get in the zone.";
+    } else if (currentStatus.connected) {
+      msg = `Notion time: ${notionTimeStr} | Earth time: ${realTimeStr}`;
+    } else {
+      msg = `Notion is not connected`;
+    }
+    return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Notion Historic</title>
+  </head>
+  <body>
+      <h1>${msg}</h1>
+      <div id="chart"></div>
+  </body>
+  </html>`;
+  }
+
   subscriptions.push(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
-      const notionTimeStr = getTimeStr(notionTime);
-      const realTimeStr = getTimeStr(realTime);
-      let msg = "";
-      if (currentStatus.charging) {
-        msg = "Invest in yourself, unplug Notion and get in the zone.";
-      } else if (currentStatus.connected) {
-        msg = `Notion time: ${notionTimeStr} | Earth time: ${realTimeStr}`;
-      } else {
-        msg = `Notion is not connected`;
-      }
-      vscode.window.showInformationMessage(msg);
+      // Create and show a new webview
+      const panel = vscode.window.createWebviewPanel(
+        "notion", // Identifies the type of the webview. Used internally
+        "Cat Coding", // Title of the panel displayed to the user
+        vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
+        {} // Webview options. More on these later.
+      );
+
+      const updateWebview = () => {
+        panel.webview.html = getWebviewContent();
+      };
+
+      // Set initial content
+      updateWebview();
+
+      const theData = {
+        labels: timestamps,
+        datasets: [
+          {
+            name: "Flow Data",
+            type: "line",
+            values: flowStates
+          }
+        ]
+      };
+
+      const chart = new Chart("#chart", {
+        // or a DOM element,
+        // new Chart() in case of ES6 module with above usage
+        title: "My Awesome Chart",
+        data: theData,
+        type: "line", // or 'bar', 'line', 'scatter', 'pie', 'percentage'
+        height: 250,
+        colors: ["#7cd6fd"]
+      });
+
+      // And schedule updates to the content every second
+      const interval = setInterval(updateWebview, 1000);
+
+      panel.onDidDispose(
+        () => {
+          // When the panel is closed, cancel any future updates to the webview content
+          clearInterval(interval);
+        },
+        null,
+        context.subscriptions
+      );
     })
   );
 
@@ -67,22 +133,6 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   mindStateStatusBarItem.text = "Notion";
 
   const usr = ua("UA-119018391-2", { uid: deviceId });
-
-  // const analytics = new Analytics("UA-119018391-2");
-
-  // let clientId = "deviceId"
-  // async function trackEvent(category, action, label, value) {
-  //    analytics.event(category, action, { evLabel: label, evValue: value, clientId: clientId})
-  //     .then(response => {
-  //       clientId = response.clientId;
-  //       console.log("Response", JSON.stringify(response));
-  //       return response;
-  //     })
-  //     .catch(err => {
-  //       console.log("Error", JSON.stringify(err));
-  //       return err;
-  //     });
-  // }
 
   const trackEvent = (
     category: string,
@@ -112,6 +162,9 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   });
 
   let runningAverageScore = 0.0;
+  let flowStates: number[] = [];
+  let timestamps: number[] = [];
+
   notion.status().subscribe((status: any) => {
     currentStatus = status;
     console.log("status", currentStatus);
@@ -204,7 +257,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   let notionTime = 0;
   let realTime = 0;
   let paceArray: number[] = [];
-  const paceArrayLength = 50 * 5;
+  const paceArrayLength = 60 * 2;
   // for (let i = 0; i < paceArrayLength; i++) {
   //   paceArray.push(0);
   // }
@@ -234,7 +287,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
       mindStateStatusBarItem.text = `Notion not connected`;
     } else if (currentStatus.charging) {
       mindStateStatusBarItem.text =
-        "$(circle-slash) Notion is charging. $(circle-slash)";
+        "$(circle-slash) Notion is charging $(circle-slash)";
     } else if (currentMindState === states.initializing) {
       mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
     } else {
@@ -248,10 +301,19 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
         paceArray.shift();
       }
 
-      const paceTimeStr = getTimeStr(sumArray(paceArray) * 12); // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
+      const paceTime = sumArray(paceArray) * 30; // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
+      let stopLightColor = "";
+      if (paceTime < 60 * 20) {
+        stopLightColor = "red";
+      } else if (paceTime < 60 * 40) {
+        stopLightColor = "yellow";
+      }
       let str = "";
-      const runningAverageStr = (runningAverageScore * 100).toFixed(0);
-      str = `Stage ${currentMindState.str} w/ pace of ${paceTimeStr}/hour @ score ${runningAverageStr}`;
+      if (paceArray.length < paceArrayLength || stopLightColor === "") {
+        str = `Flow stage ${currentMindState.str}`;
+      } else {
+        str = `Flow stage ${currentMindState.str} stoplight ${stopLightColor}`;
+      }
       mindStateStatusBarItem.text = str;
     }
   }, 1000);
@@ -273,17 +335,27 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
         const prevMindState = currentMindState;
         for (let key in states) {
           if (avg < states[key].limit.calm) {
-            if (prevMindState !== states[key]) {
+            currentMindState = states[key];
+            if (prevMindState !== currentMindState) {
               usr
                 .event(
                   "notion_interaction",
                   "Flow State",
                   "state",
-                  states[key].val
+                  currentMindState.val
                 )
                 .send();
+              flowStates.push(currentMindState.val);
+              timestamps.push(Date.now());
+              if (currentMindState.val >= 4) {
+                doNotDisturb.enable().catch(console.log);
+              } else {
+                doNotDisturb
+                  .disable()
+                  .then()
+                  .catch(console.log);
+              }
             }
-            currentMindState = states[key];
             console.log(
               `${new Date().toLocaleTimeString()} ${
                 currentMindState.star
