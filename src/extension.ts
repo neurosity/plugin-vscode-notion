@@ -181,7 +181,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
     },
     create: {
       limit: {
-        calm: 0.25
+        calm: 0.24
       },
       str: "4 of 5",
       star: " ****",
@@ -205,9 +205,9 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
   let realTime = 0;
   let paceArray: number[] = [];
   const paceArrayLength = 50 * 5;
-  for (let i = 0; i < paceArrayLength; i++) {
-    paceArray.push(0);
-  }
+  // for (let i = 0; i < paceArrayLength; i++) {
+  //   paceArray.push(0);
+  // }
 
   function padLeftZero(time: number) {
     return `${time < 10 ? `0${time}` : time}`;
@@ -251,7 +251,7 @@ export async function activate({ subscriptions }: vscode.ExtensionContext) {
       const paceTimeStr = getTimeStr(sumArray(paceArray) * 12); // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
       let str = "";
       const runningAverageStr = (runningAverageScore * 100).toFixed(0);
-      str = `Stage ${currentMindState.str} w/ pace of ${paceTimeStr}/hour w/ score ${runningAverageStr})`;
+      str = `Stage ${currentMindState.str} w/ pace of ${paceTimeStr}/hour @ score ${runningAverageStr}`;
       mindStateStatusBarItem.text = str;
     }
   }, 1000);
