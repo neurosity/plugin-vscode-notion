@@ -64,8 +64,9 @@ export async function activate(context: vscode.ExtensionContext) {
       <title>Notion</title>
   </head>
   <body>
-      <h1 id="headline">Notion</h1>
-      <h2 id="time-pace"></h2>
+      <h1>Notion</h1>
+      <h2 id="headline"></h2>
+      <h3 id="time-pace"></h3>
       <h3 id="time-notion"></h3>
       <h3 id="time-earth"></h3>
       <h3 id="score"></h3>
@@ -87,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         const message = event.data; // The JSON data our extension sent
         if (message.command === 'newFlowValue') {
-          // paceTime.textContent = "Your on pace to work " + message.paceTime + " minutes this hour"
+          paceTime.textContent = "Your on pace to work " + message.paceTime + " minutes this hour"
           // notionTime.textContent = "Notion time: " + message.notionTime;
           // earthTime.textContent = "Earth time: " + message.earthTime;
           // score.textContent = "Flow score: " + (message.score * 100).toFixed(0);
@@ -97,14 +98,14 @@ export async function activate(context: vscode.ExtensionContext) {
           }
           console.log("plotData", plotData);
           Plotly.restyle( TESTER, plotData);
-        // } else if (message.command === 'notionStatus') {
-        //   if (message.charging) {
-        //     headline.textContent = "Invest in yourself, unplug Notion and get in the zone";
-        //   } else if (message.connected) {
-        //     headline.textContent = "Notion is active";
-        //   } else {
-        //     headline.textContent = "Notion is not connected";
-        //   }
+        } else if (message.command === 'notionStatus') {
+          if (message.charging) {
+            headline.textContent = "Invest in yourself, unplug Notion and get in the zone";
+          } else if (message.connected) {
+            headline.textContent = "Notion is active";
+          } else {
+            headline.textContent = "Notion is not connected";
+          }
         }
       });
     </script>
