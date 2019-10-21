@@ -1,17 +1,25 @@
 import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
+// import { BufferedMetricsLogger } from "datadog-metrics";
 import { Chart } from "frappe-charts";
 import { filter, map, scan, bufferCount, tap } from "rxjs/operators";
 import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 
 // import Analytics from "electron-google-analytics";
 import * as ua from "universal-analytics";
+// import * as StatsD from "hot-shots";
 
 import { Subject } from "rxjs";
 
 let mindStateStatusBarItem: vscode.StatusBarItem;
 
 const ignoreIsCharging = false;
+
+// const metricsLogger = new BufferedMetricsLogger({
+//   apiKey: "351eb75be1c8b7afa769e0e8e96026d4",
+//   host: "11b10da",
+//   prefix: "vscode."
+// });
 
 export async function activate(context: vscode.ExtensionContext) {
   const { subscriptions } = context;
@@ -24,6 +32,7 @@ export async function activate(context: vscode.ExtensionContext) {
     charging: false,
     connected: false
   };
+
   const notionAvgScoreCommandId = "notion.showAverageScore";
 
   // create a new status bar item that we can now manage
@@ -43,66 +52,122 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  function getWebviewContent() {
-    const notionTimeStr = getTimeStr(notionTime);
-    const realTimeStr = getTimeStr(realTime);
-    const paceTimeStr = getTimeStr(paceTime);
+  let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
-    let msg = "";
-    if (currentStatus.charging) {
-      msg = "<h1>Invest in yourself, unplug Notion and get in the zone.</h1>";
-    } else if (currentStatus.connected) {
-      msg = `<h1>Notion is active!</h1>\n<h2>Pace: ${paceTimeStr} notion time per hour</h2>\n<h2>Flow score: ${(
-        runningAverageScore * 100
-      ).toFixed(
-        2
-      )}</h2>\n<h2>Notion time: ${notionTimeStr}</h2>\n<h2>Earth time: ${realTimeStr}</h2>`;
-    } else {
-      msg = "<h1>Notion is not connected</h1>";
-    }
+  function getWebviewContent() {
     return `<!DOCTYPE html>
   <html lang="en">
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Notion Historic</title>
+      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+      <title>Notion</title>
   </head>
   <body>
-      <div>
-        ${msg}
-      </div>
+      <h1 id="headline">Notion</h1>
+      <h2 id="time-pace"></h2>
+      <h3 id="time-notion"></h3>
+      <h3 id="time-earth"></h3>
+      <h3 id="score"></h3>
+      <div id="tester" style="width:600px;height:250px;"></div>
+
+    <script>
+      const headline = document.getElementById('headline');
+      const paceTime = document.getElementById('time-pace');
+      const notionTime = document.getElementById('time-notion');
+      const earthTime = document.getElementById('time-earth');
+      const score = document.getElementById('score');
+      let plotData = {x:[0], y:[0]}
+      const TESTER = document.getElementById('tester');
+
+      Plotly.plot( TESTER, [plotData], { margin: { t: 0 } } );      
+
+      // Handle the message inside the webview
+      window.addEventListener('message', event => {
+
+        const message = event.data; // The JSON data our extension sent
+        if (message.command === 'newFlowValue') {
+          // paceTime.textContent = "Your on pace to work " + message.paceTime + " minutes this hour"
+          // notionTime.textContent = "Notion time: " + message.notionTime;
+          // earthTime.textContent = "Earth time: " + message.earthTime;
+          // score.textContent = "Flow score: " + (message.score * 100).toFixed(0);
+          plotData = {
+            x: [message.timestamps],
+            y: [message.flowStates]
+          }
+          console.log("plotData", plotData);
+          Plotly.restyle( TESTER, plotData);
+        // } else if (message.command === 'notionStatus') {
+        //   if (message.charging) {
+        //     headline.textContent = "Invest in yourself, unplug Notion and get in the zone";
+        //   } else if (message.connected) {
+        //     headline.textContent = "Notion is active";
+        //   } else {
+        //     headline.textContent = "Notion is not connected";
+        //   }
+        }
+      });
+    </script>
   </body>
   </html>`;
   }
 
   subscriptions.push(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
-      // Create and show a new webview
-      const panel = vscode.window.createWebviewPanel(
-        "notion", // Identifies the type of the webview. Used internally
-        "Notion Information", // Title of the panel displayed to the user
-        vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
-        {} // Webview options. More on these later.
-      );
+      const columnToShowIn = vscode.window.activeTextEditor
+        ? vscode.window.activeTextEditor.viewColumn
+        : vscode.ViewColumn.Beside;
 
-      const updateWebview = () => {
-        panel.webview.html = getWebviewContent();
-      };
+      if (currentPanel) {
+        // If we already have a panel, show it in the target column
+        currentPanel.reveal(columnToShowIn);
+      } else {
+        // Create and show a new webview
+        currentPanel = vscode.window.createWebviewPanel(
+          "notion", // Identifies the type of the webview. Used internally
+          "Notion Information", // Title of the panel displayed to the user
+          columnToShowIn, // Editor column to show the new webview panel in.
+          {
+            // Enable scripts in the webview
+            enableScripts: true
+          }
+        );
 
-      // Set initial content
-      updateWebview();
+        const updateWebview = () => {
+          if (currentPanel) {
+            currentPanel.webview.html = getWebviewContent();
+          }
+        };
 
-      // And schedule updates to the content every second
-      const interval = setInterval(updateWebview, 1000);
+        // Set initial content
+        updateWebview();
 
-      panel.onDidDispose(
-        () => {
-          // When the panel is closed, cancel any future updates to the webview content
-          clearInterval(interval);
-        },
-        null,
-        context.subscriptions
-      );
+        // And schedule updates to the content every second
+        // const interval = setInterval(updateWebview, 1000);
+
+        currentPanel.onDidDispose(
+          () => {
+            // When the panel is closed, cancel any future updates to the webview content
+            // clearInterval(interval);
+            currentPanel = undefined;
+          },
+          null,
+          subscriptions
+        );
+      }
+    })
+  );
+
+  // Our new command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("catCoding.doRefactor", () => {
+      if (!currentPanel) {
+        return;
+      }
+
+      // Send a message to our webview.
+      // You can send any JSON serializable data.
+      currentPanel.webview.postMessage({ command: "refactor", paceArray });
     })
   );
 
@@ -145,12 +210,20 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   let runningAverageScore = 0.0;
-  let flowStates: number[] = [];
-  let timestamps: number[] = [];
+  let flowStates: number[] = [0];
+  let timestamps: number[] = [0];
 
   notion.status().subscribe((status: any) => {
     currentStatus = status;
     console.log("status", currentStatus);
+    if (currentPanel) {
+      // Send a message to our webview.
+      // You can send any JSON serializable data.
+      currentPanel.webview.postMessage({
+        ...status,
+        command: "notionStatus"
+      });
+    }
   });
 
   let $powerByBandAvg = new Subject();
@@ -236,6 +309,7 @@ export async function activate(context: vscode.ExtensionContext) {
   };
 
   let currentMindState = states.initializing;
+  // metricsLogger.gauge("current_mind_state", currentMindState.val);
 
   let notionTime = 0;
   let realTime = 0;
@@ -299,6 +373,24 @@ export async function activate(context: vscode.ExtensionContext) {
         str = `Flow stage ${currentMindState.str} stoplight ${stopLightColor}`;
       }
       mindStateStatusBarItem.text = str;
+
+      const notionTimeStr = getTimeStr(notionTime);
+      const earthTimeStr = getTimeStr(realTime);
+      const paceTimeStr = getTimeStr(paceTime);
+      if (currentPanel) {
+        // Send a message to our webview.
+        // You can send any JSON serializable data.
+        currentPanel.webview.postMessage({
+          command: "newFlowValue",
+          notionTime: notionTimeStr,
+          earthTime: earthTimeStr,
+          paceTime: paceTimeStr,
+          state: currentMindState,
+          score: runningAverageScore,
+          flowStates,
+          timestamps
+        });
+      }
     }
   }, 1000);
 
@@ -313,6 +405,8 @@ export async function activate(context: vscode.ExtensionContext) {
         });
         const avg = sum / values.length;
         runningAverageScore = avg;
+        // metricsLogger.gauge("flow_avg_score", avg);
+
         usr
           .event("notion_interaction", "Flow State Value", "value", avg)
           .send();
@@ -321,6 +415,8 @@ export async function activate(context: vscode.ExtensionContext) {
           if (avg < states[key].limit.calm) {
             currentMindState = states[key];
             if (prevMindState !== currentMindState) {
+              // metricsLogger.gauge("current_mind_state", currentMindState.val);
+
               usr
                 .event(
                   "notion_interaction",
@@ -329,8 +425,6 @@ export async function activate(context: vscode.ExtensionContext) {
                   currentMindState.val
                 )
                 .send();
-              flowStates.push(currentMindState.val);
-              timestamps.push(Date.now());
               if (currentMindState.val >= 4) {
                 doNotDisturb.enable().catch(console.log);
               } else {
@@ -340,6 +434,9 @@ export async function activate(context: vscode.ExtensionContext) {
                   .catch(console.log);
               }
             }
+            flowStates.push(runningAverageScore);
+            timestamps.push(realTime);
+
             console.log(
               `${new Date().toLocaleTimeString()} ${
                 currentMindState.star
