@@ -7,11 +7,9 @@ import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 // import Analytics from "electron-google-analytics";
 import * as ua from "universal-analytics";
 
-import { mapRange } from "./utils";
 import { Subject } from "rxjs";
 
 let mindStateStatusBarItem: vscode.StatusBarItem;
-let kinesisStatusBarItem: vscode.StatusBarItem;
 
 const ignoreIsCharging = false;
 
@@ -48,14 +46,19 @@ export async function activate(context: vscode.ExtensionContext) {
   function getWebviewContent() {
     const notionTimeStr = getTimeStr(notionTime);
     const realTimeStr = getTimeStr(realTime);
+    const paceTimeStr = getTimeStr(paceTime);
 
     let msg = "";
     if (currentStatus.charging) {
-      msg = "Invest in yourself, unplug Notion and get in the zone.";
+      msg = "<h1>Invest in yourself, unplug Notion and get in the zone.</h1>";
     } else if (currentStatus.connected) {
-      msg = `Notion time: ${notionTimeStr} | Earth time: ${realTimeStr}`;
+      msg = `<h1>Notion is active!</h1>\n<h2>Pace: ${paceTimeStr} notion time per hour</h2>\n<h2>Flow score: ${(
+        runningAverageScore * 100
+      ).toFixed(
+        2
+      )}</h2>\n<h2>Notion time: ${notionTimeStr}</h2>\n<h2>Earth time: ${realTimeStr}</h2>`;
     } else {
-      msg = `Notion is not connected`;
+      msg = "<h1>Notion is not connected</h1>";
     }
     return `<!DOCTYPE html>
   <html lang="en">
@@ -65,8 +68,9 @@ export async function activate(context: vscode.ExtensionContext) {
       <title>Notion Historic</title>
   </head>
   <body>
-      <h1>${msg}</h1>
-      <div id="chart"></div>
+      <div>
+        ${msg}
+      </div>
   </body>
   </html>`;
   }
@@ -76,7 +80,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // Create and show a new webview
       const panel = vscode.window.createWebviewPanel(
         "notion", // Identifies the type of the webview. Used internally
-        "Cat Coding", // Title of the panel displayed to the user
+        "Notion Information", // Title of the panel displayed to the user
         vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
         {} // Webview options. More on these later.
       );
@@ -87,27 +91,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Set initial content
       updateWebview();
-
-      const theData = {
-        labels: timestamps,
-        datasets: [
-          {
-            name: "Flow Data",
-            type: "line",
-            values: flowStates
-          }
-        ]
-      };
-
-      const chart = new Chart("#chart", {
-        // or a DOM element,
-        // new Chart() in case of ES6 module with above usage
-        title: "My Awesome Chart",
-        data: theData,
-        type: "line", // or 'bar', 'line', 'scatter', 'pie', 'percentage'
-        height: 250,
-        colors: ["#7cd6fd"]
-      });
 
       // And schedule updates to the content every second
       const interval = setInterval(updateWebview, 1000);
@@ -256,6 +239,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   let notionTime = 0;
   let realTime = 0;
+  let paceTime = 0;
   let paceArray: number[] = [];
   const paceArrayLength = 60 * 2;
   // for (let i = 0; i < paceArrayLength; i++) {
@@ -301,7 +285,7 @@ export async function activate(context: vscode.ExtensionContext) {
         paceArray.shift();
       }
 
-      const paceTime = sumArray(paceArray) * 30; // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
+      paceTime = sumArray(paceArray) * 30; // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
       let stopLightColor = "";
       if (paceTime < 60 * 20) {
         stopLightColor = "red";
