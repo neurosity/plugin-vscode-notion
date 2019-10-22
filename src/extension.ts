@@ -480,11 +480,16 @@ export async function activate(context: vscode.ExtensionContext) {
           state: currentMindState,
           score: runningAverageScore
         });
-        counter++;
-        if (counter > 5) counter = 0;
       }
     }
     if (currentPanel) {
+      if (currentMindState === states.initializing) {
+        currentMindState = states.distracted;
+      } else if (currentMindState === states.distracted) {
+        currentMindState = states.flow;
+      } else {
+        currentMindState = states.initializing;
+      }
       currentPanel.webview.postMessage({
         command: "newFlowValue",
         notionTime: "5:50",
