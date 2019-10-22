@@ -63,6 +63,15 @@ export async function activate(context: vscode.ExtensionContext) {
       <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
       <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
       <title>Notion</title>
+      <style>
+      body {
+        background-color: #00031a;
+      }
+      h1, h2, h3 {
+        text-color: #5c717b;
+        text-align: center;
+      }
+      </style>
   </head>
   <body>
     <div id="app">
@@ -72,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext) {
       <h3>{{ earthMessage }}</h3>
       <h3>{{ notionMessage }}</h3>
       <h3>Instant flow score {{ score }}</h3>
-      <div id="tester" style="width:600px;height:250px;"></div>
+      <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
     </div>
 
     <script>
@@ -97,12 +106,33 @@ export async function activate(context: vscode.ExtensionContext) {
             }
           }
       })
-    
-      let plotData = {x:[0], y:[0]}
-      const TESTER = document.getElementById('tester');
-
-      Plotly.plot( TESTER, [plotData], { margin: { t: 0 } } );      
-
+      function rand() {
+        return Math.random();
+      }
+      
+      var time = new Date();
+      
+      var data = [{
+        x: [time], 
+        y: [rand()],
+        mode: 'lines',
+        line: {color: '#80CAF6'}
+      }] 
+      
+      
+      Plotly.plot('graph', data);  
+      
+      // let plotData = {x:[0], y:[0]}
+      // var data = [{
+      //   x: [now],
+      //   y: [rand()],
+      //   mode: 'lines',
+      //   line: {color: '#4FB0FF'}
+      // }]
+      // const TESTER = document.getElementById('tester');
+      let counter = 0;
+      // Plotly.plot('tester', [plotData]);      
+      
       // Handle the message inside the webview
       window.addEventListener('message', event => {
 
@@ -113,12 +143,20 @@ export async function activate(context: vscode.ExtensionContext) {
           app.notionTime = message.notionTime;
           app.earthTime = message.earthTime;
           app.score = message.score;
-          plotData = {
-            x: [message.timestamps],
-            y: [message.flowStates]
+          
+          const time = new Date();
+
+          console.log('message', message);
+        
+          let update = {
+            x:  [[time]],
+            y: [[message.state.val]]
           }
-          console.log("plotData", plotData);
-          Plotly.restyle( TESTER, plotData);
+          
+          Plotly.extendTraces('graph', update, [0])
+          counter++;
+          if (counter > 5) counter = 0;
+          
         } else if (message.command === 'notionStatus') {
           if (message.charging) {
             app.headline = "Invest in yourself, unplug Notion and get in the zone";
@@ -229,8 +267,6 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   let runningAverageScore = 0.0;
-  let flowStates: number[] = [0];
-  let timestamps: number[] = [0];
 
   notion.status().subscribe((status: any) => {
     currentStatus = status;
@@ -377,7 +413,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   const sumArray = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
-
+  let counter = 0;
   setInterval(() => {
     if (currentStatus.connected === false) {
       mindStateStatusBarItem.text = `Notion not connected`;
@@ -442,10 +478,10 @@ export async function activate(context: vscode.ExtensionContext) {
           earthTime: earthTimeStr,
           paceTime: paceTimeStr,
           state: currentMindState,
-          score: runningAverageScore,
-          flowStates,
-          timestamps
+          score: runningAverageScore
         });
+        counter++;
+        if (counter > 5) counter = 0;
       }
     }
     if (currentPanel) {
@@ -455,9 +491,7 @@ export async function activate(context: vscode.ExtensionContext) {
         earthTime: "20:21",
         paceTime: "10:10",
         state: currentMindState,
-        score: 99,
-        flowStates: [0, 1, 1, 2, 3, 4, 4],
-        timestamps: [0, 5, 10, 15, 20, 25, 30]
+        score: 99
       });
     }
   }, 1000);
@@ -491,8 +525,6 @@ export async function activate(context: vscode.ExtensionContext) {
                 )
                 .send();
             }
-            flowStates.push(currentMindState.val);
-            timestamps.push(realTime);
 
             console.log(
               `${new Date().toLocaleTimeString()} ${
