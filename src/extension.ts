@@ -14,7 +14,8 @@ import { Subject } from "rxjs";
 let mindStateStatusBarItem: vscode.StatusBarItem;
 
 const ignoreIsCharging = false;
-
+const mockdata = false;
+const verbose = true;
 // const metricsLogger = new BufferedMetricsLogger({
 //   apiKey: "351eb75be1c8b7afa769e0e8e96026d4",
 //   host: "11b10da",
@@ -77,6 +78,7 @@ export async function activate(context: vscode.ExtensionContext) {
     <div id="app">
       <h1>Notion by Neurosity</h1>
       <h2>{{ headline }}</h2>
+      <h3>{{ doNotDisturbMessage }}</h3>
       <h3>{{ paceMessage }}</h3>
       <h3>{{ earthMessage }}</h3>
       <h3>{{ notionMessage }}</h3>
@@ -92,6 +94,7 @@ export async function activate(context: vscode.ExtensionContext) {
             notionTime: '',
             earthTime: '',
             headline: '',
+            doNotDisturb: false,
             score: NaN
           },
           computed: {
@@ -103,9 +106,15 @@ export async function activate(context: vscode.ExtensionContext) {
             },
             notionMessage() {
               return "True time " + this.notionTime + ".";
+            },
+            doNotDisturbMessage() {
+              return "Do not disturb is " + (this.doNotDisturb ? "active" : "not active");
             }
           }
-      })
+      });
+      const vscode = acquireVsCodeApi();
+      
+      
       function rand() {
         return Math.random();
       }
@@ -118,20 +127,13 @@ export async function activate(context: vscode.ExtensionContext) {
         mode: 'lines',
         line: {color: '#80CAF6'}
       }] 
-      
-      
-      Plotly.plot('graph', data);  
-      
-      // let plotData = {x:[0], y:[0]}
-      // var data = [{
-      //   x: [now],
-      //   y: [rand()],
-      //   mode: 'lines',
-      //   line: {color: '#4FB0FF'}
-      // }]
-      // const TESTER = document.getElementById('tester');
-      let counter = 0;
-      // Plotly.plot('tester', [plotData]);      
+      window.onload = () => {
+        console.log("Window loaded");
+        vscode.postMessage({
+          command: 'didLoad'
+        });
+      }
+      Plotly.plot('graph', data);      
       
       // Handle the message inside the webview
       window.addEventListener('message', event => {
@@ -143,6 +145,7 @@ export async function activate(context: vscode.ExtensionContext) {
           app.notionTime = message.notionTime;
           app.earthTime = message.earthTime;
           app.score = message.score;
+          app.doNotDisturb = message.doNotDisturb;
           
           const time = new Date();
 
@@ -201,6 +204,19 @@ export async function activate(context: vscode.ExtensionContext) {
           ...currentStatus,
           command: "notionStatus"
         });
+
+        // Handle messages from the webview
+        currentPanel.webview.onDidReceiveMessage(
+          message => {
+            switch (message.command) {
+              case "didLoad":
+                console.log("Web view did load");
+                return;
+            }
+          },
+          undefined,
+          subscriptions
+        );
 
         currentPanel.onDidDispose(
           () => {
@@ -381,18 +397,23 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   };
 
-  let currentMindState = states.initializing;
+  let currentFlowState = states.initializing;
   let currentMindPace = paces.red;
   // metricsLogger.gauge("current_mind_state", currentMindState.val);
 
   let notionTime = 0;
   let realTime = 0;
   let paceTime = 0;
+  let lastDate = new Date();
   let paceArray: number[] = [];
-  const paceArrayLength = 60 * 2;
-  // for (let i = 0; i < paceArrayLength; i++) {
-  //   paceArray.push(0);
-  // }
+  let flowStates: number[] = [];
+  let notionTimes: number[] = [];
+  let dateArray: Date[] = [];
+  const defaultPacePeriod = 60; // seconds
+  const paceArrayLength = defaultPacePeriod; // 60 seconds times pace period is how long array is
+  const getPaceMultiplier = (period: number) => {
+    return (60 * 60) / period;
+  };
 
   function padLeftZero(time: number) {
     return `${time < 10 ? `0${time}` : time}`;
@@ -412,94 +433,162 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  const sumArray = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
-  let counter = 0;
-  setInterval(() => {
-    if (currentStatus.connected === false) {
-      mindStateStatusBarItem.text = `Notion not connected`;
-    } else if (currentStatus.charging) {
-      mindStateStatusBarItem.text =
-        "$(circle-slash) Notion is charging $(circle-slash)";
-    } else if (currentMindState === states.initializing) {
-      mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
+  const updateTimes = () => {
+    notionTime += currentFlowState.timeMultiplier;
+    notionTimes.push();
+    realTime += 1;
+    lastDate = new Date();
+    dateArray.push(lastDate);
+
+    paceArray.push(currentFlowState.timeMultiplier);
+    let currentPaceMultiplier = defaultPacePeriod;
+    if (paceArray.length > paceArrayLength) {
+      paceArray.shift();
     } else {
-      if (currentStatus.charging === false || ignoreIsCharging) {
-        paceArray.push(currentMindState.timeMultiplier);
-        notionTime += currentMindState.timeMultiplier;
-        realTime += 1;
-      }
-
-      if (paceArray.length > paceArrayLength) {
-        paceArray.shift();
-      }
-
-      paceTime = sumArray(paceArray) * 30; // multiply pace time by 12 to exterpolate an hour from 5 minutes of data
-      const prevMindPace = currentMindPace;
-      if (paceTime < paces.red.limit) {
-        currentMindPace = paces.red;
-      } else if (paceTime < paces.yellow.limit) {
-        currentMindPace = paces.yellow;
-      } else {
-        currentMindPace = paces.green;
-      }
-      if (currentMindPace !== prevMindPace) {
-        console.log("New mind pace");
-        usr
-          .event(
-            "notion_interaction",
-            "New Mind Pace",
-            "pace",
-            currentMindPace.val
-          )
-          .send();
-      }
-      let str = "";
-      if (
-        paceArray.length < paceArrayLength ||
-        currentMindPace === paces.green
-      ) {
-        str = `Flow stage ${currentMindState.str}`;
-      } else if (currentMindPace === paces.yellow) {
-        str = `Flow stage ${currentMindState.str}, warning, pace slowing.`;
-      } else {
-        str = `Flow stage ${currentMindState.str}, slow pace... get focused!`;
-      }
-      mindStateStatusBarItem.text = str;
-
-      const notionTimeStr = getTimeStr(notionTime);
-      const earthTimeStr = getTimeStr(realTime);
-      const paceTimeStr = getTimeStr(paceTime);
-      if (currentPanel) {
-        // Send a message to our webview.
-        // You can send any JSON serializable data.
-        currentPanel.webview.postMessage({
-          command: "newFlowValue",
-          notionTime: notionTimeStr,
-          earthTime: earthTimeStr,
-          paceTime: paceTimeStr,
-          state: currentMindState,
-          score: runningAverageScore
-        });
-      }
+      const numElementsInPaceArray = paceArray.length; // happens to be one per second
+      currentPaceMultiplier = getPaceMultiplier(numElementsInPaceArray);
     }
+    paceTime = sumArray(paceArray) * currentPaceMultiplier;
+    updateMindPace();
+  };
+
+  const createMockData = () => {
+    if (currentFlowState === states.initializing) {
+      currentFlowState = states.distracted;
+    } else if (currentFlowState === states.distracted) {
+      currentFlowState = states.flow;
+    } else {
+      currentFlowState = states.initializing;
+    }
+    runningAverageScore += 0.01;
+    if (runningAverageScore > 1.0) runningAverageScore = 0;
+  };
+
+  const updateMindPace = () => {
+    const prevMindPace = currentMindPace;
+    if (paceTime < paces.red.limit) {
+      currentMindPace = paces.red;
+    } else if (paceTime < paces.yellow.limit) {
+      currentMindPace = paces.yellow;
+    } else {
+      currentMindPace = paces.green;
+    }
+    if (currentMindPace !== prevMindPace) {
+      if (verbose) console.log(`New mind pace is ${currentMindPace.str}`);
+      controlDoNotDisturb();
+      usr
+        .event(
+          "notion_interaction",
+          "New Mind Pace",
+          "pace",
+          currentMindPace.val
+        )
+        .send();
+    }
+  };
+
+  const updateFlowStatusBarText = () => {
+    let str = "";
+    if (currentMindPace === paces.green) {
+      str = `Flow stage ${currentFlowState.str}`;
+    } else if (currentMindPace === paces.yellow) {
+      str = `Flow stage ${currentFlowState.str}, warning, pace slowing.`;
+    } else {
+      str = `Flow stage ${currentFlowState.str}, slow pace... get focused!`;
+    }
+    mindStateStatusBarItem.text = str;
+  };
+
+  const dispatchNewFlowScoreToWindow = () => {
+    const notionTimeStr = getTimeStr(notionTime);
+    const earthTimeStr = getTimeStr(realTime);
+    const paceTimeStr = getTimeStr(paceTime);
     if (currentPanel) {
-      if (currentMindState === states.initializing) {
-        currentMindState = states.distracted;
-      } else if (currentMindState === states.distracted) {
-        currentMindState = states.flow;
-      } else {
-        currentMindState = states.initializing;
-      }
+      // Send a message to our webview.
+      // You can send any JSON serializable data.
       currentPanel.webview.postMessage({
         command: "newFlowValue",
-        notionTime: "5:50",
-        earthTime: "20:21",
-        paceTime: "10:10",
-        state: currentMindState,
-        score: 99
+        notionTime: notionTimeStr,
+        earthTime: earthTimeStr,
+        paceTime: paceTimeStr,
+        state: currentFlowState,
+        score: runningAverageScore,
+        doNotDisturb: doNotDisturbEnabled
       });
     }
+  };
+
+  const sumArray = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+  setInterval(() => {
+    if (currentStatus.connected === false && !mockdata) {
+      mindStateStatusBarItem.text = `Notion not connected`;
+    } else if (currentStatus.charging && !mockdata) {
+      mindStateStatusBarItem.text =
+        "$(circle-slash) Notion is charging $(circle-slash)";
+    } else if (currentFlowState === states.initializing && !mockdata) {
+      mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
+    } else {
+      if (mockdata) {
+        createMockData();
+      }
+      // Update all the times: notion, real and pace
+      updateTimes();
+
+      updateFlowStatusBarText();
+
+      dispatchNewFlowScoreToWindow();
+    }
   }, 1000);
+
+  let doNotDisturbEnabled = false;
+
+  const controlDoNotDisturb = () => {
+    if (currentMindPace === paces.green) {
+      if (doNotDisturbEnabled === false) {
+        doNotDisturb
+          .enable()
+          .then(() => {
+            if (verbose) console.log("Do not disturb ENABLED");
+          })
+          .catch(console.log);
+        doNotDisturbEnabled = true;
+      }
+    } else {
+      if (doNotDisturbEnabled) {
+        doNotDisturbEnabled = false;
+        doNotDisturb
+          .disable()
+          .then(() => {
+            if (verbose) console.log("Do not disturb DISABLED");
+          })
+          .catch(console.log);
+      }
+    }
+  };
+
+  const updateMindState = (score: number) => {
+    const prevMindState = currentFlowState;
+    for (let key in states) {
+      if (score < states[key].limit.calm) {
+        currentFlowState = states[key];
+        if (prevMindState !== currentFlowState) {
+          usr
+            .event(
+              "notion_interaction",
+              "Flow State",
+              "state",
+              currentFlowState.val
+            )
+            .send();
+        }
+
+        console.log(
+          `${new Date().toLocaleTimeString()} ${currentFlowState.star} ${score}`
+        );
+        break;
+      }
+    }
+  };
 
   notion
     .calm()
@@ -516,29 +605,7 @@ export async function activate(context: vscode.ExtensionContext) {
         usr
           .event("notion_interaction", "Flow State Value", "value", avg)
           .send();
-        const prevMindState = currentMindState;
-        for (let key in states) {
-          if (avg < states[key].limit.calm) {
-            currentMindState = states[key];
-            if (prevMindState !== currentMindState) {
-              usr
-                .event(
-                  "notion_interaction",
-                  "Flow State",
-                  "state",
-                  currentMindState.val
-                )
-                .send();
-            }
-
-            console.log(
-              `${new Date().toLocaleTimeString()} ${
-                currentMindState.star
-              } ${avg}`
-            );
-            break;
-          }
-        }
+        updateMindState(avg);
       }
     });
 }
