@@ -82,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
       <h3>{{ paceMessage }}</h3>
       <h3>{{ earthMessage }}</h3>
       <h3>{{ notionMessage }}</h3>
-      <h3>Instant flow score {{ score }}</h3>
+      <h3>{{ flowMessage }}</h3>
       <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
     </div>
 
@@ -95,6 +95,7 @@ export async function activate(context: vscode.ExtensionContext) {
             earthTime: '',
             headline: '',
             doNotDisturb: false,
+            flowStage: '',
             score: NaN
           },
           computed: {
@@ -109,6 +110,10 @@ export async function activate(context: vscode.ExtensionContext) {
             },
             doNotDisturbMessage() {
               return "Do not disturb is " + (this.doNotDisturb ? "active" : "not active");
+            },
+            flowMessage() {
+              const flowScore = Math.floor(this.score*100);
+              return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
             }
           }
       });
@@ -146,6 +151,7 @@ export async function activate(context: vscode.ExtensionContext) {
           app.earthTime = message.earthTime;
           app.score = message.score;
           app.doNotDisturb = message.doNotDisturb;
+          app.flowStage = message.state.str;
           
           const time = new Date();
 
@@ -156,10 +162,16 @@ export async function activate(context: vscode.ExtensionContext) {
             y: [[message.state.val]]
           }
           
-          Plotly.extendTraces('graph', update, [0])
-          counter++;
-          if (counter > 5) counter = 0;
+          Plotly.extendTraces('graph', update, [0])          
+        } else if (message.command === 'oldFlowValues') {
+          const dateArray = message.dateArray;
+          const flowStates = message.flowStates;
+          let update = {
+            x:  [dateArray],
+            y: [flowStates]
+          }
           
+          Plotly.extendTraces('graph', update, [0])  
         } else if (message.command === 'notionStatus') {
           if (message.charging) {
             app.headline = "Invest in yourself, unplug Notion and get in the zone";
@@ -210,6 +222,8 @@ export async function activate(context: vscode.ExtensionContext) {
           message => {
             switch (message.command) {
               case "didLoad":
+                sendStatusToWebPanel(currentStatus);
+                // sendHistoricArraysToWebPanel();
                 console.log("Web view did load");
                 return;
             }
@@ -282,11 +296,10 @@ export async function activate(context: vscode.ExtensionContext) {
     password
   });
 
-  let runningAverageScore = 0.0;
+  let runningAverageCalmScore = 0.0;
+  let runningAverageFocusScore = 0.0;
 
-  notion.status().subscribe((status: any) => {
-    currentStatus = status;
-    console.log("status", currentStatus);
+  const sendStatusToWebPanel = (status: any) => {
     if (currentPanel) {
       // Send a message to our webview.
       // You can send any JSON serializable data.
@@ -295,37 +308,31 @@ export async function activate(context: vscode.ExtensionContext) {
         command: "notionStatus"
       });
     }
-  });
+  };
 
-  let $powerByBandAvg = new Subject();
-  notion.brainwaves("powerByBand").subscribe(powerByBand => {
-    let sumPower = 0;
-    for (let i = 0; i < 8; i++) {
-      sumPower += powerByBand.data.beta[i];
+  const sendHistoricArraysToWebPanel = () => {
+    if (currentPanel) {
+      // Send a message to our webview.
+      // You can send any JSON serializable data.
+      currentPanel.webview.postMessage({
+        dateArray,
+        flowStates,
+        command: "oldFlowValues"
+      });
     }
-    $powerByBandAvg.next(sumPower / 8);
-    // console.log("powerByBand", sumPower, sumPower/8);
-  });
+  };
 
-  // $powerByBandAvg.pipe(bufferCount(30, 5)).subscribe((values: number[]) => {
-  //   if (currentStatus.connected == false) {
-  //     mindStateStatusBarItem.text = `Notion is not connected`;
-  //     // } else if (currentStatus.charging) {
-  //     // mindStateStatusBarItem.text = `Notion can't be used while charging`;
-  //   } else {
-  //     let sum = 0;
-  //     values.forEach((metric: number) => {
-  //       sum += metric;
-  //     });
-  //     const avg = sum / values.length;
-  //     // console.log(`Average score ${avg}`);
-  //   }
-  // });
+  notion.status().subscribe((status: any) => {
+    currentStatus = status;
+    console.log("status", currentStatus);
+    sendStatusToWebPanel(status);
+  });
 
   let states: any = {
     initializing: {
       limit: {
-        calm: 0
+        calm: 0,
+        focus: 0
       },
       str: "Initializing",
       star: "     ",
@@ -334,7 +341,8 @@ export async function activate(context: vscode.ExtensionContext) {
     },
     distracted: {
       limit: {
-        calm: 0.1
+        calm: 0.1,
+        focus: 0.15
       },
       str: "1 of 5",
       star: "    *",
@@ -343,7 +351,8 @@ export async function activate(context: vscode.ExtensionContext) {
     },
     grind: {
       limit: {
-        calm: 0.16
+        calm: 0.16,
+        focus: 0.2
       },
       str: "2 of 5",
       star: "   **",
@@ -352,7 +361,8 @@ export async function activate(context: vscode.ExtensionContext) {
     },
     iterate: {
       limit: {
-        calm: 0.2
+        calm: 0.2,
+        focus: 0.3
       },
       str: "3 of 5",
       star: "  ***",
@@ -361,7 +371,8 @@ export async function activate(context: vscode.ExtensionContext) {
     },
     create: {
       limit: {
-        calm: 0.24
+        calm: 0.24,
+        focus: 0.33
       },
       str: "4 of 5",
       star: " ****",
@@ -370,7 +381,8 @@ export async function activate(context: vscode.ExtensionContext) {
     },
     flow: {
       limit: {
-        calm: 1.0
+        calm: 1.0,
+        focus: 1.0
       },
       str: "5",
       star: "*****",
@@ -460,8 +472,8 @@ export async function activate(context: vscode.ExtensionContext) {
     } else {
       currentFlowState = states.initializing;
     }
-    runningAverageScore += 0.01;
-    if (runningAverageScore > 1.0) runningAverageScore = 0;
+    runningAverageCalmScore += 0.01;
+    if (runningAverageCalmScore > 1.0) runningAverageCalmScore = 0;
   };
 
   const updateMindPace = () => {
@@ -512,7 +524,7 @@ export async function activate(context: vscode.ExtensionContext) {
         earthTime: earthTimeStr,
         paceTime: paceTimeStr,
         state: currentFlowState,
-        score: runningAverageScore,
+        score: runningAverageCalmScore,
         doNotDisturb: doNotDisturbEnabled
       });
     }
@@ -569,8 +581,11 @@ export async function activate(context: vscode.ExtensionContext) {
   const updateMindState = (score: number) => {
     const prevMindState = currentFlowState;
     for (let key in states) {
-      if (score < states[key].limit.calm) {
+      if (score < states[key].limit.focus) {
         currentFlowState = states[key];
+        flowStates.push(currentFlowState.val);
+        dateArray.push(new Date());
+
         if (prevMindState !== currentFlowState) {
           usr
             .event(
@@ -600,12 +615,32 @@ export async function activate(context: vscode.ExtensionContext) {
           sum += metric.probability;
         });
         const avg = sum / values.length;
-        runningAverageScore = avg;
+        runningAverageCalmScore = avg;
 
         usr
           .event("notion_interaction", "Flow State Value", "value", avg)
           .send();
-        updateMindState(avg);
+      }
+    });
+
+  notion
+    .focus()
+    .pipe(bufferCount(30, 5))
+    .subscribe((values: object[]) => {
+      if (currentStatus.connected && currentStatus.charging === false) {
+        let sum = 0;
+        values.forEach((metric: any) => {
+          sum += metric.probability;
+        });
+        const avg = sum / values.length;
+        runningAverageFocusScore = avg;
+        updateMindState(runningAverageFocusScore);
+
+        console.log(
+          `Focus score ${runningAverageFocusScore.toFixed(
+            2
+          )} and calm score ${runningAverageCalmScore.toFixed(2)}`
+        );
       }
     });
 }
