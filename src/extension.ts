@@ -352,7 +352,7 @@ export async function activate(context: vscode.ExtensionContext) {
     grind: {
       limit: {
         calm: 0.16,
-        focus: 0.2
+        focus: 0.25
       },
       str: "2 of 5",
       star: "   **",
