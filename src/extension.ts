@@ -11,7 +11,8 @@ import * as ua from "universal-analytics";
 
 import { Subject, pipe } from "rxjs";
 import * as osxBrightness from "osx-brightness";
-import regression from "regression";
+
+const regression = require("regression");
 
 let mindStateStatusBarItem: vscode.StatusBarItem;
 
@@ -125,28 +126,20 @@ export async function activate(context: vscode.ExtensionContext) {
       function rand() {
         return Math.random();
       }
-      
-      var time = new Date();
-      
-      var data = [{
-        x: [time], 
-        y: [rand()],
-        mode: 'lines',
-        line: {color: '#80CAF6'}
-      }] 
+
       window.onload = () => {
         console.log("Window loaded");
         vscode.postMessage({
           command: 'didLoad'
         });
-      }
-      Plotly.plot('graph', data);      
+      }   
+      let loadedInitDataInGraph = false;
       
       // Handle the message inside the webview
       window.addEventListener('message', event => {
 
         const message = event.data; // The JSON data our extension sent
-        if (message.command === 'newFlowValue') {
+        if (message.command === 'newFlowValue' && loadedInitDataInGraph) {
           
           app.paceTime = message.paceTime;
           app.notionTime = message.notionTime;
@@ -166,14 +159,18 @@ export async function activate(context: vscode.ExtensionContext) {
           
           Plotly.extendTraces('graph', update, [0])          
         } else if (message.command === 'oldFlowValues') {
+          loadedInitDataInGraph = true;
           const dateArray = message.dateArray;
           const flowStates = message.flowStates;
-          let update = {
-            x:  [dateArray],
-            y: [flowStates]
-          }
+      
+          var data = [{
+            x: dataArray, 
+            y: flowStates,
+            mode: 'lines',
+            line: {color: '#80CAF6'}
+          }] 
           
-          Plotly.extendTraces('graph', update, [0])  
+          Plotly.plot('graph', data);   
         } else if (message.command === 'notionStatus') {
           if (message.charging) {
             app.headline = "Invest in yourself, unplug Notion and get in the zone";
@@ -225,7 +222,7 @@ export async function activate(context: vscode.ExtensionContext) {
             switch (message.command) {
               case "didLoad":
                 sendStatusToWebPanel(currentStatus);
-                // sendHistoricArraysToWebPanel();
+                sendHistoricArraysToWebPanel();
                 console.log("Web view did load");
                 return;
             }
@@ -580,10 +577,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   };
 
-  const controlMacScreenBrightness = () => {
-    osxBrightness.set(0.75).then(() => {
-      console.log("Changed brightness to 75%");
-    });
+  const controlMacScreenBrightness = (brightness: number) => {
+    return osxBrightness.set(brightness);
   };
 
   const updateMindState = (score: number) => {
@@ -634,21 +629,27 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   const focusTrend$ = focusAverage$.pipe(
-    tap(console.log),
-    bufferCount(2, 1),
-    tap(console.log),
+    bufferCount(5, 1),
     map((averages: number[]) => {
-      const points = averages.map((average, i) => [i + 1, average]);
-      console.log("Points", points);
-      const result = regression.linear(points);
-      const [slope] = result.equation;
-      console.log("slope", slope);
+      const points = averages.map((average, i) => [i + 2, average]);
+      const [slope] = regression.linear(points).equation;
       return slope;
     })
   );
 
   focusTrend$.subscribe((trend: number) => {
-    console.log(`Focus trend: ${trend}`);
+    console.log("Trend: ", trend);
+    if (trend < 0) {
+      if (trend < -0.01) {
+        console.log("Loosing focus");
+        controlMacScreenBrightness(0.5);
+        setTimeout(() => {
+          controlMacScreenBrightness(1);
+        }, 1000);
+      }
+    } else if (trend > 0) {
+      console.log("Gaining focus");
+    }
   });
 
   focusAverage$.subscribe((average: number) => {

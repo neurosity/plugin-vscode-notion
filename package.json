@@ -57,6 +57,7 @@
   "dependencies": {
     "@neurosity/notion": "^3.5.0",
     "@sindresorhus/do-not-disturb": "^1.1.0",
+    "@types/regression": "^2.0.0",
     "@types/universal-analytics": "^0.4.3",
     "datadog-metrics": "^0.8.1",
     "electron-google-analytics": "^0.1.0",
