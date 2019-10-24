@@ -2,14 +2,16 @@ import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
 // import { BufferedMetricsLogger } from "datadog-metrics";
 import { Chart } from "frappe-charts";
-import { filter, map, scan, bufferCount, tap } from "rxjs/operators";
+import { filter, map, scan, bufferCount, tap, share } from "rxjs/operators";
 import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 
 // import Analytics from "electron-google-analytics";
 import * as ua from "universal-analytics";
 // import * as StatsD from "hot-shots";
 
-import { Subject } from "rxjs";
+import { Subject, pipe } from "rxjs";
+import * as osxBrightness from "osx-brightness";
+import regression from "regression";
 
 let mindStateStatusBarItem: vscode.StatusBarItem;
 
@@ -524,7 +526,7 @@ export async function activate(context: vscode.ExtensionContext) {
         earthTime: earthTimeStr,
         paceTime: paceTimeStr,
         state: currentFlowState,
-        score: runningAverageCalmScore,
+        score: runningAverageFocusScore,
         doNotDisturb: doNotDisturbEnabled
       });
     }
@@ -578,6 +580,12 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   };
 
+  const controlMacScreenBrightness = () => {
+    osxBrightness.set(0.75).then(() => {
+      console.log("Changed brightness to 75%");
+    });
+  };
+
   const updateMindState = (score: number) => {
     const prevMindState = currentFlowState;
     for (let key in states) {
@@ -607,40 +615,62 @@ export async function activate(context: vscode.ExtensionContext) {
 
   notion
     .calm()
-    .pipe(bufferCount(30, 5))
-    .subscribe((values: object[]) => {
-      if (currentStatus.connected && currentStatus.charging === false) {
-        let sum = 0;
-        values.forEach((metric: any) => {
-          sum += metric.probability;
-        });
-        const avg = sum / values.length;
-        runningAverageCalmScore = avg;
+    .pipe(
+      filter(() => currentStatus.connected && currentStatus.charging === false),
+      averageScoreBuffer()
+    )
+    .subscribe((average: number) => {
+      runningAverageCalmScore = average;
 
-        usr
-          .event("notion_interaction", "Flow State Value", "value", avg)
-          .send();
-      }
+      usr
+        .event("notion_interaction", "Flow State Value", "value", average)
+        .send();
     });
 
-  notion
-    .focus()
-    .pipe(bufferCount(30, 5))
-    .subscribe((values: object[]) => {
-      if (currentStatus.connected && currentStatus.charging === false) {
-        let sum = 0;
-        values.forEach((metric: any) => {
-          sum += metric.probability;
-        });
-        const avg = sum / values.length;
-        runningAverageFocusScore = avg;
-        updateMindState(runningAverageFocusScore);
+  const focusAverage$ = notion.focus().pipe(
+    filter(() => currentStatus.connected && currentStatus.charging === false),
+    averageScoreBuffer(),
+    share()
+  );
 
-        console.log(
-          `Focus score ${runningAverageFocusScore.toFixed(
-            2
-          )} and calm score ${runningAverageCalmScore.toFixed(2)}`
-        );
-      }
-    });
+  const focusTrend$ = focusAverage$.pipe(
+    tap(console.log),
+    bufferCount(2, 1),
+    tap(console.log),
+    map((averages: number[]) => {
+      const points = averages.map((average, i) => [i + 1, average]);
+      console.log("Points", points);
+      const result = regression.linear(points);
+      const [slope] = result.equation;
+      console.log("slope", slope);
+      return slope;
+    })
+  );
+
+  focusTrend$.subscribe((trend: number) => {
+    console.log(`Focus trend: ${trend}`);
+  });
+
+  focusAverage$.subscribe((average: number) => {
+    runningAverageFocusScore = average;
+    updateMindState(runningAverageFocusScore);
+    console.log(
+      `Focus score ${runningAverageFocusScore} and calm score ${runningAverageCalmScore}`
+    );
+  });
+}
+
+function averageScoreBuffer(windowCount = 30, windowStep = 5) {
+  return pipe(
+    map((metric: any) => metric.probability),
+    bufferCount(windowCount, windowStep),
+    map((probabilities: number[]): number => {
+      return (
+        probabilities.reduce(
+          (acc: number, probability: number) => acc + probability
+        ) / probabilities.length
+      );
+    }),
+    map(average => Number(average.toFixed(2)))
+  );
 }

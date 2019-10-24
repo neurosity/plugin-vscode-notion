@@ -8,3 +8,7 @@ declare module "@sindresorhus/do-not-disturb" {
 declare module "datadog-metrics" {
   export const BufferedMetricsLogger: any;
 }
+declare module "osx-brightness" {
+  export function get(): Promise<void>;
+  export function set(value: number): Promise<void>;
+}
