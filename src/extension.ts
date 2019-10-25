@@ -37,24 +37,15 @@ export async function activate(context: vscode.ExtensionContext) {
     connected: false
   };
 
-  const notionAvgScoreCommandId = "notion.showAverageScore";
+  const notionShowWebViewCommandId = "notion.showNotionWebview";
 
   // create a new status bar item that we can now manage
   mindStateStatusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
     999
   );
-  mindStateStatusBarItem.command = notionAvgScoreCommandId;
+  mindStateStatusBarItem.command = notionShowWebViewCommandId;
   subscriptions.push(mindStateStatusBarItem);
-
-  const notionConnectedCommandId = "notion.showConnectionStatus";
-  subscriptions.push(
-    vscode.commands.registerCommand(notionConnectedCommandId, () => {
-      vscode.window.showInformationMessage(
-        `Notion ${currentStatus.connected ? "is" : "is not"} connected`
-      );
-    })
-  );
 
   let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
@@ -64,8 +55,8 @@ export async function activate(context: vscode.ExtensionContext) {
   <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+      // <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+      // <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
       <title>Notion</title>
       <style>
       body {
@@ -90,107 +81,128 @@ export async function activate(context: vscode.ExtensionContext) {
     </div>
 
     <script>
-      const app = new Vue({
-          el: '#app',
-          data: {
-            paceTime: '',
-            notionTime: '',
-            earthTime: '',
-            headline: '',
-            doNotDisturb: false,
-            flowStage: '',
-            score: NaN
-          },
-          computed: {
-            paceMessage() {
-              return "You're on pace to work " + this.paceTime + " minutes this hour.";
-            },
-            earthMessage() {
-              return "Earth time elapsed " + this.earthTime + ".";
-            },
-            notionMessage() {
-              return "True time " + this.notionTime + ".";
-            },
-            doNotDisturbMessage() {
-              return "Do not disturb is " + (this.doNotDisturb ? "active" : "not active");
-            },
-            flowMessage() {
-              const flowScore = Math.floor(this.score*100);
-              return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
-            }
-          }
-      });
-      const vscode = acquireVsCodeApi();
+      // try {
+      //   const app = new Vue({
+      //     el: '#app',
+      //     data: {
+      //       paceTime: '',
+      //       notionTime: '',
+      //       earthTime: '',
+      //       headline: '',
+      //       doNotDisturb: false,
+      //       flowStage: '',
+      //       score: NaN
+      //     },
+      //     computed: {
+      //       paceMessage() {
+      //         return "You're on pace to work " + this.paceTime + " minutes this hour.";
+      //       },
+      //       earthMessage() {
+      //         return "Earth time elapsed " + this.earthTime + ".";
+      //       },
+      //       notionMessage() {
+      //         return "True time " + this.notionTime + ".";
+      //       },
+      //       doNotDisturbMessage() {
+      //         return "Do not disturb is " + (this.doNotDisturb ? "active" : "not active");
+      //       },
+      //       flowMessage() {
+      //         const flowScore = Math.floor(this.score*100);
+      //         return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
+      //       }
+      //     }
+      // });
+      // const vscode = acquireVsCodeApi();
       
-      
-      function rand() {
-        return Math.random();
-      }
+      // function rand() {
+      //   return Math.random();
+      // }
 
-      window.onload = () => {
-        console.log("Window loaded");
-        vscode.postMessage({
-          command: 'didLoad'
-        });
-      }   
-      let loadedInitDataInGraph = false;
+      // window.onload = () => {
+      //   console.log("Window loaded");
+      //   vscode.postMessage({
+      //     command: 'didLoad'
+      //   });
+      // }   
+      // let loadedInitDataInGraph = false;
       
-      // Handle the message inside the webview
-      window.addEventListener('message', event => {
-
-        const message = event.data; // The JSON data our extension sent
-        if (message.command === 'newFlowValue' && loadedInitDataInGraph) {
+      // // Handle the message inside the webview
+      // window.addEventListener('message', event => {
+      //   try {
+      //     const message = event.data; // The JSON data our extension sent
+      //     if (message.command === 'newFlowValue' && loadedInitDataInGraph) {
+            
+      //       app.paceTime = message.paceTime;
+      //       app.notionTime = message.notionTime;
+      //       app.earthTime = message.earthTime;
+      //       app.score = message.score;
+      //       app.doNotDisturb = message.doNotDisturb;
+      //       app.flowStage = message.state.str;
+            
+      //       const time = new Date();
+  
+      //       console.log('message', message);
           
-          app.paceTime = message.paceTime;
-          app.notionTime = message.notionTime;
-          app.earthTime = message.earthTime;
-          app.score = message.score;
-          app.doNotDisturb = message.doNotDisturb;
-          app.flowStage = message.state.str;
-          
-          const time = new Date();
-
-          console.log('message', message);
+      //       let update = {
+      //         x:  [[time]],
+      //         y: [[message.state.val]]
+      //       }
+            
+      //       Plotly.extendTraces('graph', update, [0])          
+      //     } else if (message.command === 'oldFlowValues') {
+      //       const dateArray = message.dateArray;
+      //       const flowStates = message.flowStates;
+      //       console.log("Got message data after open", message, dateArray, flowStates);
+      //       let data = [{
+      //         x: dateArray, 
+      //         y: flowStates,
+      //         mode: 'lines',
+      //         line: {color: '#80CAF6'}
+      //       }] 
+            
+      //       if (dateArray.length < 1) {
+      //         const time = new Date();
+      //         console.log("Had to correct the arrays");
+      //         data[0].x = [time];
+      //         data[0].y = [rand()];
+      //       }
+  
+      //       console.log("Final data array", data);
+  
         
-          let update = {
-            x:  [[time]],
-            y: [[message.state.val]]
-          }
-          
-          Plotly.extendTraces('graph', update, [0])          
-        } else if (message.command === 'oldFlowValues') {
-          loadedInitDataInGraph = true;
-          const dateArray = message.dateArray;
-          const flowStates = message.flowStates;
+      //       Plotly.plot('graph', data);   
+      //       loadedInitDataInGraph = true;
+  
+      //     } else if (message.command === 'notionStatus') {
+      //       if (message.charging) {
+      //         app.headline = "Invest in yourself, unplug Notion and get in the zone";
+      //       } else if (message.connected) {
+      //         app.headline = "Notion is active";
+      //       } else {
+      //         app.headline = "Notion is not connected";
+      //       }
+      //     }
+      //   } catch (e) {
+      //     console.log(e);
+      //   }
+      // });
+      // } catch (e) {
+      //   console.log(e);
+      // }
       
-          var data = [{
-            x: dataArray, 
-            y: flowStates,
-            mode: 'lines',
-            line: {color: '#80CAF6'}
-          }] 
-          
-          Plotly.plot('graph', data);   
-        } else if (message.command === 'notionStatus') {
-          if (message.charging) {
-            app.headline = "Invest in yourself, unplug Notion and get in the zone";
-          } else if (message.connected) {
-            app.headline = "Notion is active";
-          } else {
-            app.headline = "Notion is not connected";
-          }
-        }
-      });
     </script>
   </body>
   </html>`;
   }
 
   subscriptions.push(
-    vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
+    vscode.commands.registerCommand(notionShowWebViewCommandId, () => {
+      if (verbose) {
+        console.log("Notion status bar clicked");
+      }
       const columnToShowIn = vscode.window.activeTextEditor
         ? vscode.window.activeTextEditor.viewColumn
-        : vscode.ViewColumn.Beside;
+        : undefined; //vscode.ViewColumn.Beside;
 
       usr.event("notion_interaction", "VSCode Extension Clicked");
 
@@ -202,28 +214,30 @@ export async function activate(context: vscode.ExtensionContext) {
         currentPanel = vscode.window.createWebviewPanel(
           "notion", // Identifies the type of the webview. Used internally
           "Notion Information", // Title of the panel displayed to the user
-          columnToShowIn, // Editor column to show the new webview panel in.
+          vscode.ViewColumn.Beside, // Editor column to show the new webview panel in.
           {
             // Enable scripts in the webview
             enableScripts: true
           }
         );
-
+        if (verbose) {
+          console.log("Launching Notion webview");
+        }
         currentPanel.webview.html = getWebviewContent();
 
-        currentPanel.webview.postMessage({
-          ...currentStatus,
-          command: "notionStatus"
-        });
+        // currentPanel.webview.postMessage({
+        //   ...currentStatus,
+        //   command: "notionStatus"
+        // });
 
         // Handle messages from the webview
         currentPanel.webview.onDidReceiveMessage(
           message => {
             switch (message.command) {
               case "didLoad":
+                console.log("Web view did load");
                 sendStatusToWebPanel(currentStatus);
                 sendHistoricArraysToWebPanel();
-                console.log("Web view did load");
                 return;
             }
           },
@@ -241,19 +255,6 @@ export async function activate(context: vscode.ExtensionContext) {
           subscriptions
         );
       }
-    })
-  );
-
-  // Our new command
-  context.subscriptions.push(
-    vscode.commands.registerCommand("catCoding.doRefactor", () => {
-      if (!currentPanel) {
-        return;
-      }
-
-      // Send a message to our webview.
-      // You can send any JSON serializable data.
-      currentPanel.webview.postMessage({ command: "refactor", paceArray });
     })
   );
 
@@ -313,11 +314,13 @@ export async function activate(context: vscode.ExtensionContext) {
     if (currentPanel) {
       // Send a message to our webview.
       // You can send any JSON serializable data.
-      currentPanel.webview.postMessage({
+      const dataObject = {
         dateArray,
         flowStates,
         command: "oldFlowValues"
-      });
+      };
+      console.log("oldFlowValues", dataObject);
+      currentPanel.webview.postMessage(dataObject);
     }
   };
 
@@ -449,7 +452,6 @@ export async function activate(context: vscode.ExtensionContext) {
     notionTimes.push();
     realTime += 1;
     lastDate = new Date();
-    dateArray.push(lastDate);
 
     paceArray.push(currentFlowState.timeMultiplier);
     let currentPaceMultiplier = defaultPacePeriod;
