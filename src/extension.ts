@@ -550,6 +550,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
         dispatchNewFlowScoreToWindow();
       }
+      // const activeEditor = vscode.window.activeTextEditor;
+      // if (activeEditor) {
+      //   console.log(
+      //     "activeEditor.selection.active.line",
+      //     activeEditor.selection
+      //   );
+      // }
     }, 1000);
 
     let doNotDisturbEnabled = false;
