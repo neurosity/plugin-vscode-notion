@@ -11,6 +11,7 @@ import * as ua from "universal-analytics";
 
 import { Subject, pipe } from "rxjs";
 import * as osxBrightness from "osx-brightness";
+import { registerLoginCommand } from "./login";
 
 const regression = require("regression");
 
@@ -45,7 +46,9 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.StatusBarAlignment.Right,
       999
     );
-    mindStateStatusBarItem.command = notionAvgScoreCommandId;
+
+    registerLoginCommand();
+
     subscriptions.push(mindStateStatusBarItem);
 
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
@@ -197,9 +200,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     subscriptions.push(
       vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
-        const columnToShowIn = vscode.window.activeTextEditor
+        const columnToShowIn = typeof vscode.window.activeTextEditor !== 'undefined'
+          && typeof vscode.window.activeTextEditor.viewColumn !== 'undefined'
           ? vscode.window.activeTextEditor.viewColumn
-          : undefined; //vscode.ViewColumn.Beside;
+          : vscode.ViewColumn.Beside;
 
         usr.event("notion_interaction", "VSCode Extension Clicked");
 
@@ -255,14 +259,17 @@ export async function activate(context: vscode.ExtensionContext) {
       })
     );
 
-    mindStateStatusBarItem.text = `Enter user name, device id and password`;
+    mindStateStatusBarItem.text = `$(sign-in) Notion Login`;
     mindStateStatusBarItem.show();
 
     if (!deviceId || !email || !password) {
+      mindStateStatusBarItem.command = 'notion.login';
+
       return;
     }
 
     mindStateStatusBarItem.text = "Notion";
+    mindStateStatusBarItem.command = notionAvgScoreCommandId;
 
     const usr = ua("UA-119018391-2", { uid: deviceId });
 
@@ -608,7 +615,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
           console.log(
             `${new Date().toLocaleTimeString()} ${
-              currentFlowState.star
+            currentFlowState.star
             } ${score}`
           );
           break;
