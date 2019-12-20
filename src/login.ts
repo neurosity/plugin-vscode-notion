@@ -2,8 +2,10 @@ import * as vscode from "vscode";
 
 import { Notion } from "@neurosity/notion";
 
-// TODO: Looks like the user config is cached or something, so values aren't updated
-// until restart
+export let notion: any;
+export let logged_in: boolean = false;
+
+let login_callback: () => void;
 
 /**
  * BEGIN CONFIG
@@ -11,31 +13,27 @@ import { Notion } from "@neurosity/notion";
  */
 
 // Initial prompt for login method
-let email_label = '$(mail) Sign in with email';
-let user_pass_label = '$(link-external) Sign in with username and password';
-let code_label = '$(key) I already have an email login code'
+let email_label = "$(mail) Sign in with email";
+let code_label = "$(key) I already have an email login code";
 
 const loginMethods: vscode.QuickPickItem[] = [
   {
     label: email_label,
-    detail: 'We\'ll email you an access code you can use to sign in',
-  },
-  {
-    label: user_pass_label,
-    detail: 'Use your external browser to sign in'
+    detail: "We'll email you an access code you can use to sign in"
   },
   {
     label: code_label,
-    detail: 'I already have an emailed access code'
+    detail: "I already have an emailed access code"
   }
 ];
 
 // Prompt for entering config values
-let email_prompt = 'Please enter the email address associated with your Neurosity account';
-let email_placeholder = 'email';
+let email_prompt =
+  "Please enter the email address associated with your Neurosity account";
+let email_placeholder = "email";
 
-let deviceid_prompt = 'Please enter your Notion headset device ID'
-let deviceid_placeholder = 'device ID';
+let deviceid_prompt = "Please enter your Notion headset device ID";
+let deviceid_placeholder = "device ID";
 
 /**
  * END CONFIG
@@ -45,15 +43,15 @@ let deviceid_placeholder = 'device ID';
  * Register the command notion.login
  * Shows a QuickPick selection for the user to login with a method of their choice
  */
-export function registerLoginCommand() {
-  vscode.commands.registerCommand('notion.login', () => {
-    vscode.window.showQuickPick(loginMethods).then(
-      handleLogin,
-      loginError
-    );
+export function registerLoginCommand(command: string) {
+  vscode.commands.registerCommand(command, () => {
+    vscode.window.showQuickPick(loginMethods).then(handleLogin, loginError);
   });
 }
 
+export function loginCallback(method: any) {
+  login_callback = method;
+}
 
 /**
  * Retrieve a value from the config. If it doesn't exist, prompt the user for the value
@@ -77,9 +75,9 @@ function getOrPrompt(section: string, prompt: string, placeHolder?: string) {
     }
 
     // Handle the prompt
-    const promptSuccess = (value: string | undefined) => {
-      if (typeof value !== 'undefined') {
-        config.update(section, value, true);
+    const promptSuccess = async (value: string | undefined) => {
+      if (typeof value !== "undefined") {
+        await config.update(section, value, true);
       }
 
       resolve(value);
@@ -90,11 +88,12 @@ function getOrPrompt(section: string, prompt: string, placeHolder?: string) {
     };
 
     // Prompt for the value
-    vscode.window.showInputBox({
-      prompt: prompt,
-      ignoreFocusOut: true,
-      placeHolder: placeHolder
-    })
+    vscode.window
+      .showInputBox({
+        prompt: prompt,
+        ignoreFocusOut: true,
+        placeHolder: placeHolder
+      })
       .then(promptSuccess, promptRejected);
   });
 }
@@ -124,7 +123,7 @@ function ensureConfigValues(sections: string[][]) {
 }
 
 function handleLogin(method: vscode.QuickPickItem | undefined) {
-  if (typeof method === 'undefined') {
+  if (typeof method === "undefined") {
     // User cancelled the selection
     return;
   }
@@ -133,50 +132,36 @@ function handleLogin(method: vscode.QuickPickItem | undefined) {
   if (method.label == email_label) {
     // See: https://firebase.google.com/docs/auth/web/email-link-auth
     ensureConfigValues([
-      ['email', email_prompt, email_placeholder],
-      ['deviceId', deviceid_prompt, deviceid_placeholder]
-    ])
-      .then(
-        sendLoginEmail,
-        loginError
-      )
-  }
-
-  // Login with username and password
-  if (method.label == user_pass_label) {
-    vscode.window.showInformationMessage('This feature has not been implemented yet');
+      ["email", email_prompt, email_placeholder],
+      ["deviceId", deviceid_prompt, deviceid_placeholder]
+    ]).then(sendLoginEmail, loginError);
   }
 
   // Login with email code
   if (method.label == code_label) {
     ensureConfigValues([
-      ['email', email_prompt, email_placeholder],
-      ['deviceId', deviceid_prompt, deviceid_placeholder]
-    ]).then(
-      loginWithEmailCred,
-      loginError
-    )
+      ["email", email_prompt, email_placeholder],
+      ["deviceId", deviceid_prompt, deviceid_placeholder]
+    ]).then(loginWithEmailCred, loginError);
   }
 }
 
 function loginError(error?: string) {
-  let message = 'Error while selecting login method';
+  let message = "Error while selecting login method";
 
-  if (typeof error === 'undefined')
-    vscode.window.showInformationMessage(message);
-  else
-    vscode.window.showInformationMessage(message + ': ' + error);
+  if (typeof error === "undefined") vscode.window.showErrorMessage(message);
+  else vscode.window.showErrorMessage(message + ": " + error);
 }
-
-let notion: any;
 
 function sendLoginEmail() {
   let config = vscode.workspace.getConfiguration("notion");
-  let deviceId: string = config.get('deviceId') || '';
-  let email: string = config.get('email') || '';
+  let deviceId: string = config.get("deviceId") || "";
+  let email: string = config.get("email") || "";
 
-  if (deviceId == '' || email == '') {
-    vscode.window.showErrorMessage('Unable to read device ID and email from settings');
+  if (deviceId == "" || email == "") {
+    vscode.window.showErrorMessage(
+      "Unable to read device ID and email from settings"
+    );
     return;
   }
 
@@ -191,21 +176,23 @@ function sendLoginEmail() {
       handleCodeInApp: true
     })
     .then(loginWithEmailCred)
-    .catch(() => vscode.window.showErrorMessage('Error sending login email'));
+    .catch(() => vscode.window.showErrorMessage("Error sending login email"));
 }
 
 function loginWithEmailCred() {
   let config = vscode.workspace.getConfiguration("notion");
-  let deviceId: string = config.get('deviceId') || '';
-  let email: string = config.get('email') || '';
+  let deviceId: string = config.get("deviceId") || "";
+  let email: string = config.get("email") || "";
 
-  vscode.window.showInputBox({
-    prompt: 'Please enter the code obtained via the link in the email we sent you',
-    ignoreFocusOut: true,
-    placeHolder: 'code'
-  })
+  vscode.window
+    .showInputBox({
+      prompt:
+        "Please enter the code obtained via the link in the email we sent you",
+      ignoreFocusOut: true,
+      placeHolder: "code"
+    })
     .then(code => {
-      if (typeof code === 'undefined') {
+      if (typeof code === "undefined") {
         // User cancelled
         return;
       }
@@ -218,19 +205,30 @@ function loginWithEmailCred() {
       try {
         let credential = notion.api.firebase.app.firebase_.auth.EmailAuthProvider.credentialWithLink(
           email,
-          'https://console.neurosity.co/account-manager?apiKey=none&mode=signIn&oobCode=' + code + '&continueUrl=https://console.neurosity.co/vscode&lang=en'
+          "https://console.neurosity.co/account-manager?apiKey=none&mode=signIn&oobCode=" +
+            code +
+            "&continueUrl=https://console.neurosity.co/vscode&lang=en"
         );
 
-        notion.api.firebase.app.auth().signInWithCredential(credential)
+        notion.api.firebase.app
+          .auth()
+          .signInWithCredential(credential)
           .then(
-            () => vscode.window.showInformationMessage('Logged in!'),
+            () => {
+              vscode.window.showInformationMessage(
+                "Neurosity login successful"
+              );
+              logged_in = true;
+              if (login_callback) login_callback();
+            },
             (error: any) => {
               vscode.window.showErrorMessage(error.message);
             }
           );
-
       } catch (error) {
-        vscode.window.showErrorMessage('Error logging in with provided credentials');
+        vscode.window.showErrorMessage(
+          "Error logging in with provided credentials"
+        );
       }
     });
 }
