@@ -3,7 +3,8 @@ import {
   registerLoginCommand,
   logged_in,
   notion,
-  loginCallback
+  loginCallback,
+  loginFromSavedState
 } from "./login";
 import { showBiometrics } from "./biometrics";
 
@@ -19,17 +20,35 @@ export async function activate(context: vscode.ExtensionContext) {
       999
     );
 
+    subscriptions.push(mindStateStatusBarItem);
+    mindStateStatusBarItem.show();
+
     loginCallback(() => {
+      // Save current login state
+      let loginState = notion.api.firebase.app.auth().currentUser;
+      context.globalState.update("notion.loginState", loginState);
+
       showBiometrics(mindStateStatusBarItem, subscriptions, notion);
     });
 
-    if (!logged_in) {
-      subscriptions.push(mindStateStatusBarItem);
+    function showLoginButton() {
       mindStateStatusBarItem.text = `$(sign-in) Notion Login`;
-      mindStateStatusBarItem.show();
 
       registerLoginCommand("notion.login");
       mindStateStatusBarItem.command = "notion.login";
+    }
+
+    if (!logged_in) {
+      // Check if we have a saved login object
+      let loginState: string =
+        context.globalState.get("notion.loginState") || "";
+
+      if (loginState) {
+        // TODO: Detect if current login state has expired or is invalid for any reason
+        loginFromSavedState(loginState).catch(showLoginButton);
+      } else {
+        showLoginButton;
+      }
 
       return;
     }

@@ -32,7 +32,8 @@ let email_prompt =
   "Please enter the email address associated with your Neurosity account";
 let email_placeholder = "email";
 
-let deviceid_prompt = "Please enter your Notion headset device ID";
+let deviceid_prompt =
+  "Please enter your Notion headset device ID. You can find your device ID by visiting https://console.neurosity.co/settings";
 let deviceid_placeholder = "device ID";
 
 /**
@@ -51,6 +52,46 @@ export function registerLoginCommand(command: string) {
 
 export function loginCallback(method: any) {
   login_callback = method;
+}
+
+export function loginFromSavedState(saved_state: any) {
+  return new Promise((resolve, reject) => {
+    let config = vscode.workspace.getConfiguration("notion");
+    let deviceId: string = config.get("deviceId") || "";
+
+    if (!deviceId) {
+      vscode.window.showErrorMessage(
+        "Please enter your Notion device ID in the extension settings"
+      );
+      reject();
+      return;
+    }
+
+    notion = new Notion({
+      deviceId
+    });
+
+    // This try/catch might be able to detect invalid saved state, as
+    // firebase will probably throw an error
+    try {
+      const user = new notion.api.firebase.app.firebase_.User(
+        saved_state,
+        saved_state.stsTokenManager,
+        saved_state
+      );
+
+      notion.api.firebase.app
+        .auth()
+        .updateCurrentUser(user)
+        .then(() => {
+          logged_in = true;
+          if (login_callback) login_callback();
+          resolve();
+        }, reject);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 /**
