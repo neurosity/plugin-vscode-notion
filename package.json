@@ -19,10 +19,6 @@
           "format": "email",
           "default": ""
         },
-        "notion.password": {
-          "type": "string",
-          "default": ""
-        },
         "notion.deviceId": {
           "type": "string",
           "default": ""
