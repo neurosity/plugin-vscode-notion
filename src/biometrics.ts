@@ -19,6 +19,8 @@ export function showBiometrics(
   subscriptions: any,
   notion: any
 ) {
+  status_bar_item.show();
+
   const notionAvgScoreCommandId = "notion.showAverageScore";
 
   let currentStatus = {
@@ -508,10 +510,9 @@ export function showBiometrics(
     if (currentStatus.connected === false && !mockdata) {
       status_bar_item.text = `Notion not connected`;
     } else if (currentStatus.charging && !mockdata) {
-      status_bar_item.text =
-        "$(circle-slash) Notion is charging $(circle-slash)";
+      status_bar_item.text = "$(zap) Notion is charging";
     } else if (currentFlowState === states.initializing && !mockdata) {
-      status_bar_item.text = `Notion is initializing, please wait.`;
+      status_bar_item.text = `Notion is initializing, please wait`;
     } else {
       if (mockdata) {
         createMockData();

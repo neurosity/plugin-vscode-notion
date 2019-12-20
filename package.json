@@ -51,7 +51,7 @@
     "vscode": "^1.32.0"
   },
   "dependencies": {
-    "@neurosity/notion": "^3.5.0",
+    "@neurosity/notion": "^3.10.2",
     "@sindresorhus/do-not-disturb": "^1.1.0",
     "@types/regression": "^2.0.0",
     "@types/universal-analytics": "^0.4.3",
