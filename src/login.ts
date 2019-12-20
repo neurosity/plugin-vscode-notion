@@ -6,6 +6,7 @@ export let notion: any;
 export let logged_in: boolean = false;
 
 let login_callback: () => void;
+let logout_callback: () => void;
 
 /**
  * BEGIN CONFIG
@@ -22,8 +23,7 @@ const loginMethods: vscode.QuickPickItem[] = [
     detail: "We'll email you an access code you can use to sign in"
   },
   {
-    label: code_label,
-    detail: "I already have an emailed access code"
+    label: code_label
   }
 ];
 
@@ -50,8 +50,25 @@ export function registerLoginCommand(command: string) {
   });
 }
 
+export function registerLogoutCommand(command: string) {
+  vscode.commands.registerCommand(command, async () => {
+    try {
+      await notion.logout();
+      // TODO: Not sure if we need to disconnect or not
+      // await notion.disconnect();
+    } catch (error) {
+      vscode.window.showErrorMessage("Unable to logout: " + error);
+    }
+    if (logout_callback) logout_callback();
+  });
+}
+
 export function loginCallback(method: any) {
   login_callback = method;
+}
+
+export function logoutCallback(method: any) {
+  logout_callback = method;
 }
 
 export function loginFromSavedState(saved_state: any) {
@@ -256,9 +273,6 @@ function loginWithEmailCred() {
           .signInWithCredential(credential)
           .then(
             () => {
-              vscode.window.showInformationMessage(
-                "Neurosity login successful"
-              );
               logged_in = true;
               if (login_callback) login_callback();
             },
