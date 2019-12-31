@@ -64,15 +64,15 @@ export function showBiometrics(
 </head>
 <body>
   <div id="app">
-    <h1>Notion by Neurosity</h1>
-    <h2>{{ headline }}</h2>
-    <h3>{{ doNotDisturbMessage }}</h3>
-    <h3>{{ paceMessage }}</h3>
-    <h3>{{ earthMessage }}</h3>
-    <h3>{{ notionMessage }}</h3>
-    <h3>{{ flowMessage }}</h3>
-    <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
-    <button v-on:click="logout">Logout</button>
+    <h1>VSCode Notion Extension</h1>
+    <h2>{{ headlineMessage }}</h2>
+    <h3 v-if="connected && !charging">{{ doNotDisturbMessage }}</h3>
+    <h3 v-if="connected && !charging">{{ paceMessage }}</h3>
+    <h3 v-if="connected && !charging">{{ earthMessage }}</h3>
+    <h3 v-if="connected && !charging">{{ notionMessage }}</h3>
+    <h3 v-if="connected && !charging">{{ flowMessage }}</h3>
+    <div v-if="connected && !charging" id="graph" style="width:600px;height:250px;margin:auto;"></div>
+    <button class="btn btn-info btn-lg" v-on:click="logout">Logout</button>
   </div>
 
   <script>
@@ -84,8 +84,9 @@ export function showBiometrics(
           paceTime: '',
           notionTime: '',
           earthTime: '',
-          headline: '',
           doNotDisturb: false,
+          charging: false,
+          connected: false,
           flowStage: '',
           score: NaN
         },
@@ -105,6 +106,15 @@ export function showBiometrics(
           flowMessage() {
             const flowScore = Math.floor(this.score*100);
             return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
+          },
+          headlineMessage() {
+            if (this.connected === false) {
+              return "Notion not connected";
+            } else if (this.charging) {
+              return "Notion is in sleep mode";
+            } else {
+              return "Notion is active";
+            }
           }
         },
         methods: {
@@ -182,13 +192,8 @@ export function showBiometrics(
         
         // Plotly.plot('graph', data);   
       } else if (message.command === 'notionStatus') {
-        if (message.charging) {
-          app.headline = "Invest in yourself, unplug Notion and get in the zone";
-        } else if (message.connected) {
-          app.headline = "Notion is active";
-        } else {
-          app.headline = "Notion is not connected";
-        }
+        app.charging = message.charging;
+        app.connected = message.connected;
       }
     });
   </script>
@@ -295,6 +300,9 @@ export function showBiometrics(
         ...status,
         command: "notionStatus"
       });
+      console.log("Sent status to currentPanel");
+    } else {
+      console.log("No currentPanel");
     }
   };
 
