@@ -60,6 +60,29 @@ export function showBiometrics(
       text-color: #5c717b;
       text-align: center;
     }
+    .user-nav {
+      display: flex;
+      justify-content: center;
+    }
+    button.logout {
+      display:inline-block;
+      padding:0.3em 1.2em;
+      margin:0 0.1em 0.1em 0;
+      border:0.16em solid rgba(255,255,255,0);
+      border-radius:2em;
+      box-sizing: border-box;
+      text-decoration:none;
+      font-family:'Roboto',sans-serif;
+      font-weight:300;
+      color:#FFFFFF;
+      background-color:#f14e4e;
+      text-shadow: 0 0.04em 0.04em rgba(0,0,0,0.35);
+      text-align:center;
+      transition: all 0.2s;
+    }
+    button.logout:hover{
+      border-color: rgba(255,255,255,1);
+    }
     </style>
 </head>
 <body>
@@ -72,7 +95,9 @@ export function showBiometrics(
     <h3 v-if="connected && !charging">{{ notionMessage }}</h3>
     <h3 v-if="connected && !charging">{{ flowMessage }}</h3>
     <div v-if="connected && !charging" id="graph" style="width:600px;height:250px;margin:auto;"></div>
-    <button v-on:click="logout">Logout</button>
+    <div class="user-nav">
+      <button class="logout" v-on:click="logout">Logout</button>
+    </div>
   </div>
 
   <script>
@@ -220,7 +245,7 @@ export function showBiometrics(
         console.log("Create and show a new webview");
         currentPanel = vscode.window.createWebviewPanel(
           "notion", // Identifies the type of the webview. Used internally
-          "Notion Information", // Title of the panel displayed to the user
+          "Neurosity Notion", // Title of the panel displayed to the user
           columnToShowIn, // Editor column to show the new webview panel in.
           {
             // Enable scripts in the webview

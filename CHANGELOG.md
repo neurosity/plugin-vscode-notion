@@ -1,3 +1,7 @@
+# 1.1.2
+
+- Fix CSS for button - closes #5
+
 # 1.1.1
 
 - Add v1.1.0 info to changelog
