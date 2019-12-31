@@ -1,6 +1,6 @@
 # Notion VSCode by Neurosity
 
-First and foremost, Welcome! :tada: Willkommen! :confetti_ball: Bienvenue! :balloon::balloon::balloon:
+First and foremost, Welcome!
 
 Thank you for visiting Neurosity's VSCode repository. The goal for this extension is to provide objective insights into the mind to boost productivity.
 

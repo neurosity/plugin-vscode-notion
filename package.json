@@ -17,11 +17,13 @@
         "notion.email": {
           "type": "string",
           "format": "email",
-          "default": ""
+          "default": "",
+          "description": "Your console.neurosity.co email address."
         },
         "notion.deviceId": {
           "type": "string",
-          "default": ""
+          "default": "",
+          "description": "Your unique Notion Device ID"
         }
       }
     }
