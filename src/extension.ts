@@ -5,8 +5,7 @@ import {
   notion,
   loginCallback,
   logoutCallback,
-  loginFromSavedState,
-  registerLogoutCommand
+  loginFromSavedState
 } from "./login";
 import { showBiometrics } from "./biometrics";
 
@@ -33,25 +32,14 @@ export async function activate(context: vscode.ExtensionContext) {
     loginStatusBarItem.command = "notion.login";
     subscriptions.push(loginStatusBarItem);
 
-    // Logout button
-    let logoutStatusBarItem = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      999
-    );
-    logoutStatusBarItem.text = "$(sign-out) Notion Logout";
-    logoutStatusBarItem.command = "notion.logout";
-    subscriptions.push(logoutStatusBarItem);
-
     // Handle login and logout
     registerLoginCommand("notion.login");
-    registerLogoutCommand("notion.logout");
 
     loginCallback(() => {
       // Save current login state
       let loginState = notion.api.firebase.app.auth().currentUser;
       context.globalState.update("notion.loginState", loginState);
 
-      logoutStatusBarItem.show();
       loginStatusBarItem.hide();
 
       if (!biometrics_running) {
@@ -68,7 +56,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
       // Show the login button again
       showLoginButton();
-      logoutStatusBarItem.hide();
       mindStateStatusBarItem.hide();
     });
 

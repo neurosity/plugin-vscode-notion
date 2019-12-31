@@ -46,21 +46,21 @@ let deviceid_placeholder = "device ID";
  */
 export function registerLoginCommand(command: string) {
   vscode.commands.registerCommand(command, () => {
-    vscode.window.showQuickPick(loginMethods).then(handleLogin, loginError);
+    vscode.window
+      .showQuickPick(loginMethods)
+      .then(handleLogin, loginError);
   });
 }
 
-export function registerLogoutCommand(command: string) {
-  vscode.commands.registerCommand(command, async () => {
-    try {
-      await notion.logout();
-      // TODO: Not sure if we need to disconnect or not
-      // await notion.disconnect();
-    } catch (error) {
-      vscode.window.showErrorMessage("Unable to logout: " + error);
-    }
-    if (logout_callback) logout_callback();
-  });
+export async function logout() {
+  try {
+    await notion.logout();
+    // TODO: Not sure if we need to disconnect or not
+    // await notion.disconnect();
+  } catch (error) {
+    vscode.window.showErrorMessage("Unable to logout: " + error);
+  }
+  if (logout_callback) logout_callback();
 }
 
 export function loginCallback(method: any) {
@@ -121,7 +121,11 @@ export function loginFromSavedState(saved_state: any) {
  * @example
  * getOrPrompt('email', 'Please enter your email', 'email@example.com')
  */
-function getOrPrompt(section: string, prompt: string, placeHolder?: string) {
+function getOrPrompt(
+  section: string,
+  prompt: string,
+  placeHolder?: string
+) {
   return new Promise<string | undefined>((resolve, reject) => {
     let config = vscode.workspace.getConfiguration("notion");
     let value: string = config.get(section) || "";
@@ -207,7 +211,8 @@ function handleLogin(method: vscode.QuickPickItem | undefined) {
 function loginError(error?: string) {
   let message = "Error while selecting login method";
 
-  if (typeof error === "undefined") vscode.window.showErrorMessage(message);
+  if (typeof error === "undefined")
+    vscode.window.showErrorMessage(message);
   else vscode.window.showErrorMessage(message + ": " + error);
 }
 
@@ -234,7 +239,9 @@ function sendLoginEmail() {
       handleCodeInApp: true
     })
     .then(loginWithEmailCred)
-    .catch(() => vscode.window.showErrorMessage("Error sending login email"));
+    .catch(() =>
+      vscode.window.showErrorMessage("Error sending login email")
+    );
 }
 
 function loginWithEmailCred() {

@@ -8,6 +8,8 @@ import * as ua from "universal-analytics";
 import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 import * as osxBrightness from "osx-brightness";
 
+import { logout } from "./login";
+
 const regression = require("regression");
 
 const ignoreIsCharging = false;
@@ -70,9 +72,12 @@ export function showBiometrics(
     <h3>{{ notionMessage }}</h3>
     <h3>{{ flowMessage }}</h3>
     <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
+    <button v-on:click="logout">Logout</button>
   </div>
 
   <script>
+    const vscode = acquireVsCodeApi();
+
     const app = new Vue({
         el: '#app',
         data: {
@@ -101,10 +106,15 @@ export function showBiometrics(
             const flowScore = Math.floor(this.score*100);
             return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
           }
+        },
+        methods: {
+          logout(event) {
+            vscode.postMessage({
+              command: 'logout'
+            });
+          }
         }
-    });
-    const vscode = acquireVsCodeApi();
-    
+    });    
     
     function rand() {
       return Math.random();
@@ -229,6 +239,12 @@ export function showBiometrics(
                 sendHistoricArraysToWebPanel();
                 console.log("Web view did load");
                 return;
+              case "logout":
+                console.log("Logout now!");
+                logout().catch(console.log);
+                if (currentPanel) {
+                  currentPanel.dispose();
+                }
             }
           },
           undefined,
@@ -461,7 +477,8 @@ export function showBiometrics(
       currentMindPace = paces.green;
     }
     if (currentMindPace !== prevMindPace) {
-      if (verbose) console.log(`New mind pace is ${currentMindPace.str}`);
+      if (verbose)
+        console.log(`New mind pace is ${currentMindPace.str}`);
       controlDoNotDisturb();
       usr
         .event(
@@ -581,7 +598,9 @@ export function showBiometrics(
         }
 
         console.log(
-          `${new Date().toLocaleTimeString()} ${currentFlowState.star} ${score}`
+          `${new Date().toLocaleTimeString()} ${
+            currentFlowState.star
+          } ${score}`
         );
         break;
       }
@@ -589,7 +608,9 @@ export function showBiometrics(
   };
 
   const calmAverage$ = notion.calm().pipe(
-    filter(() => currentStatus.connected && currentStatus.charging === false),
+    filter(
+      () => currentStatus.connected && currentStatus.charging === false
+    ),
     averageScoreBuffer(),
     share()
   );
@@ -603,7 +624,9 @@ export function showBiometrics(
   });
 
   const focusAverage$ = notion.focus().pipe(
-    filter(() => currentStatus.connected && currentStatus.charging === false),
+    filter(
+      () => currentStatus.connected && currentStatus.charging === false
+    ),
     averageScoreBuffer(),
     share()
   );
