@@ -1,3 +1,12 @@
+# 1.1.1
+
+- Add v1.1.0 info to changelog
+- Remove bootstrap tags from webview
+
+# 1.1.0
+
+- Remove Notion Logout from status bar into webview
+
 # 1.0.3
 
 - Add changelog content

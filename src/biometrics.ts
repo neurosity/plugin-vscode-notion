@@ -72,7 +72,7 @@ export function showBiometrics(
     <h3 v-if="connected && !charging">{{ notionMessage }}</h3>
     <h3 v-if="connected && !charging">{{ flowMessage }}</h3>
     <div v-if="connected && !charging" id="graph" style="width:600px;height:250px;margin:auto;"></div>
-    <button class="btn btn-info btn-lg" v-on:click="logout">Logout</button>
+    <button v-on:click="logout">Logout</button>
   </div>
 
   <script>
