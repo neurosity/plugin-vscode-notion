@@ -5,7 +5,7 @@
   "description": "Notion VS Code Plugin",
   "main": "./build/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run build",
     "build": "tsc -p ./",
     "lint": "tslint -p ./",
     "watch": "tsc -watch -p ./"
@@ -31,7 +31,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/neurosity/plugin-vscode-notion.git"
+    "url": "https://github.com/neurosity/plugin-vscode-notion.git"
   },
   "keywords": [
     "notion",
@@ -48,8 +48,9 @@
     "typescript": "^3.6.3"
   },
   "engines": {
-    "vscode": "^1.32.0"
+    "vscode": "^1.38.0"
   },
+  "publisher": "neurosity",
   "dependencies": {
     "@neurosity/notion": "^3.10.2",
     "@sindresorhus/do-not-disturb": "^1.1.0",
