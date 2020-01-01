@@ -45,12 +45,12 @@ export function getWebviewContent() {
 <div id="app">
   <h1>VSCode Notion Extension</h1>
   <h2>{{ headlineMessage }}</h2>
-  <h3 v-if="connected && !charging">{{ doNotDisturbMessage }}</h3>
-  <h3 v-if="connected && !charging">{{ paceMessage }}</h3>
-  <h3 v-if="connected && !charging">{{ earthMessage }}</h3>
-  <h3 v-if="connected && !charging">{{ notionMessage }}</h3>
-  <h3 v-if="connected && !charging">{{ flowMessage }}</h3>
-  <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
+  <h3 v-if="showText">{{ doNotDisturbMessage }}</h3>
+  <h3 v-if="showText">{{ paceMessage }}</h3>
+  <h3 v-if="showText">{{ earthMessage }}</h3>
+  <h3 v-if="showText">{{ notionMessage }}</h3>
+  <h3 v-if="showText">{{ flowMessage }}</h3>
+  <div id="graph" style="margin:auto;"></div>
   <div class="user-nav">
     <button class="logout" v-on:click="logout">Logout</button>
   </div>
@@ -93,9 +93,14 @@ export function getWebviewContent() {
             return "Notion not connected";
           } else if (this.charging) {
             return "Notion is in sleep mode";
+          } else if (isNaN(this.score)) {
+            return "Initializing...";
           } else {
             return "Notion is active";
           }
+        },
+        showText() {
+          return this.connected && !this.charging && !isNaN(this.score);
         }
       },
       methods: {
@@ -121,6 +126,18 @@ export function getWebviewContent() {
       command: 'didLoad'
     });
   }   
+  var layout = {
+    title: 'Flow stages vs. time',
+    xaxis: {
+      tickformat: '%H:%M:%S'
+    },
+    yaxis: {
+      autotick: false,
+      tick0: 0,
+      dtick: 1,
+      ticklen: 5
+    }
+  }
   
   // Handle the message inside the webview
   window.addEventListener('message', event => {
@@ -137,7 +154,7 @@ export function getWebviewContent() {
       
       const time = new Date();
 
-      console.log('message', message);
+      console.log('time', time, 'message', message);
 
       if (loadedInitDataInGraph) {
         let update = {
@@ -155,23 +172,25 @@ export function getWebviewContent() {
           line: {color: '#80CAF6'}
         }] 
       
-        Plotly.plot('graph', data);  
+        Plotly.plot('graph', data, layout, {responsive: true});  
       }
     
    
     } else if (message.command === 'oldFlowValues') {
-      // loadedInitDataInGraph = true;
-      // const dateArray = message.dateArray;
-      // const flowStates = message.flowStates;
+      console.log('oldFlowValues', message);
+      const dateArray = message.dateArray;
+      const flowStates = message.flowStates;
   
-      // var data = [{
-      //   x: dateArray, 
-      //   y: flowStates,
-      //   mode: 'lines',
-      //   line: {color: '#80CAF6'}
-      // }] 
-      
-      // Plotly.plot('graph', data);   
+      var data = [{
+        x: dateArray, 
+        y: flowStates,
+        mode: 'lines',
+        line: {color: '#80CAF6'}
+      }] 
+      if (dateArray.length > 1) {
+        loadedInitDataInGraph = true;
+        Plotly.plot('graph', data, layout, {responsive: true});
+      }
     } else if (message.command === 'notionStatus') {
       app.charging = message.charging;
       app.connected = message.connected;

@@ -259,9 +259,9 @@ export function showBiometrics(
   let paceTime = 0;
   let lastDate = new Date();
   let paceArray: number[] = [];
-  let flowStates: number[] = [];
+  let flowStates: number[] = [0];
   let notionTimes: number[] = [];
-  let dateArray: Date[] = [];
+  let dateArray: string[] = [new Date().toString()];
   const defaultPacePeriod = 60; // seconds
   const paceArrayLength = defaultPacePeriod; // 60 seconds times pace period is how long array is
   const getPaceMultiplier = (period: number) => {
@@ -290,7 +290,7 @@ export function showBiometrics(
     notionTime += currentFlowState.timeMultiplier;
     notionTimes.push();
     realTime += 1;
-    lastDate = new Date();
+    lastDate = new Date().toString();
     dateArray.push(lastDate);
     flowStates.push(currentFlowState.val);
 

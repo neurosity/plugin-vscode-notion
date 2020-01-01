@@ -2,9 +2,10 @@
 
 ## Enhancements
 
-- Add toggle for dim screen
+- Add toggle for dim screen - closes #7
 - Add toggle for do not disturb activiation
 - Move VueJS webview to another file, `webview.ts`
+- Historical plotting from session data - closes #6
 
 ## Fixes
 
