@@ -1,3 +1,14 @@
+# 1.2.0
+
+## Enhancements
+
+- Add toggle for dim screen
+- Move VueJS webview to another file, `webview.ts`
+
+## Fixes
+
+- Remove unused notion.focus() metric
+
 # 1.1.2
 
 - Fix CSS for button - closes #5
