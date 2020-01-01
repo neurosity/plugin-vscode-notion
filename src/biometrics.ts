@@ -17,6 +17,10 @@ const ignoreIsCharging = false;
 const mockdata = false;
 const verbose = true;
 
+let config = vscode.workspace.getConfiguration("notion");
+let dimScreen: boolean = config.get("dimScreen") || false;
+let shouldDoNotDisturb: boolean = config.get("doNotDisturb") || false;
+
 export function showBiometrics(
   status_bar_item: vscode.StatusBarItem,
   subscriptions: any,
@@ -326,7 +330,7 @@ export function showBiometrics(
     if (currentMindPace !== prevMindPace) {
       if (verbose)
         console.log(`New mind pace is ${currentMindPace.str}`);
-      controlDoNotDisturb();
+      if (shouldDoNotDisturb) controlDoNotDisturb();
       usr
         .event(
           "notion_interaction",
@@ -424,7 +428,9 @@ export function showBiometrics(
   };
 
   const controlMacScreenBrightness = (brightness: number) => {
-    return osxBrightness.set(brightness);
+    if (dimScreen) {
+      return osxBrightness.set(brightness);
+    }
   };
 
   const updateMindState = (score: number) => {
