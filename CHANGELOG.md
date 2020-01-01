@@ -3,6 +3,7 @@
 ## Enhancements
 
 - Add toggle for dim screen
+- Add toggle for do not disturb activiation
 - Move VueJS webview to another file, `webview.ts`
 
 ## Fixes
