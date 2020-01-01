@@ -37,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
     loginCallback(() => {
       // Save current login state
-      let loginState = notion.api.firebase.app.auth().currentUser;
+      let loginState = notion.auth().currentUser;
       context.globalState.update("notion.loginState", loginState);
 
       loginStatusBarItem.hide();
