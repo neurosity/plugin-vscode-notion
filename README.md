@@ -38,15 +38,15 @@ So, there are a lot of needs to align notion with developers and even if someone
 
 The VSCode extension will:
 
-- Provide a simple out of the box experience for developers
-- Firebase + Custom Metric Subscriber
-- Event-driven multi-client real-time architecture
+- Provide a real time flow stage indicator
+- Show historic data for your current programming session
+- Provide an example application for developers to run with
 
 Using VSCode Notion Plugin allows you, the user, to quickly integrate Notion so you can begin investing in yourself by hacking your life.
 
 ## Who are we?
 
-Mainly, we are Neurosity. [AJ Keller](https://twitter.com/andrewjaykeller) started this project to boost his productivity. We seek to open source this application as _seed_ that blossoms into dozens of applications. If we can write applications better and faster, then the lives of programmers will improve.
+Mainly, we are Neurosity. [AJ Keller](https://twitter.com/andrewjaykeller) started this project to boost his productivity. We seek to open source this application as a _seed_ that blossoms into dozens of applications. If we can write applications better and faster, then the lives of programmers will improve.
 
 ## What do we need?
 
