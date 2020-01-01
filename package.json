@@ -24,6 +24,11 @@
           "type": "string",
           "default": "",
           "description": "Your unique Notion Device ID"
+        },
+        "notion.dimScreen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Dim screen for a second when loosing focus."
         }
       }
     }
