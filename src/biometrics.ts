@@ -257,7 +257,7 @@ export function showBiometrics(
   let notionTime = 0;
   let realTime = 0;
   let paceTime = 0;
-  let lastDate = new Date();
+  let lastDate = new Date().toString();
   let paceArray: number[] = [];
   let flowStates: number[] = [0];
   let notionTimes: number[] = [];
