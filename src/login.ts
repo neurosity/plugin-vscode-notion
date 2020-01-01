@@ -87,17 +87,11 @@ export function loginFromSavedState(saved_state: any) {
     });
 
     // This try/catch might be able to detect invalid saved state, as
-    // firebase will probably throw an error
+    // it will probably throw an error
     try {
-      const user = new notion.api.firebase.app.firebase_.User(
-        saved_state,
-        saved_state.stsTokenManager,
-        saved_state
-      );
-
-      notion.api.firebase.app
+      notion
         .auth()
-        .updateCurrentUser(user)
+        .updateCurrentUser(saved_state)
         .then(() => {
           logged_in = true;
           if (login_callback) login_callback();
@@ -159,23 +153,29 @@ function getOrPrompt(section: string, prompt: string, placeHolder?: string) {
  * @param sections - 2d array, where each item is an array of params passed to getOrPrompt()
  */
 function ensureConfigValues(sections: string[][]) {
-  return new Promise<(string | undefined)[]>(async (resolve, reject) => {
-    let values: (string | undefined)[] = [];
+  return new Promise<(string | undefined)[]>(
+    async (resolve, reject) => {
+      let values: (string | undefined)[] = [];
 
-    for (let i = 0; i < sections.length; i++) {
-      let params = sections[i];
+      for (let i = 0; i < sections.length; i++) {
+        let params = sections[i];
 
-      try {
-        let value = await getOrPrompt(params[0], params[1], params[2]);
-        values.push(value);
-      } catch (error) {
-        reject(error);
-        return;
+        try {
+          let value = await getOrPrompt(
+            params[0],
+            params[1],
+            params[2]
+          );
+          values.push(value);
+        } catch (error) {
+          reject(error);
+          return;
+        }
       }
-    }
 
-    resolve(values);
-  });
+      resolve(values);
+    }
+  );
 }
 
 function handleLogin(method: vscode.QuickPickItem | undefined) {
@@ -186,7 +186,6 @@ function handleLogin(method: vscode.QuickPickItem | undefined) {
 
   // Login with email
   if (method.label == email_label) {
-    // See: https://firebase.google.com/docs/auth/web/email-link-auth
     ensureConfigValues([
       ["email", email_prompt, email_placeholder],
       ["deviceId", deviceid_prompt, deviceid_placeholder]
@@ -225,7 +224,7 @@ function sendLoginEmail() {
     deviceId
   });
 
-  notion.api.firebase.app
+  notion
     .auth()
     .sendSignInLinkToEmail(email, {
       url: "https://console.neurosity.co/vscode",
@@ -256,16 +255,16 @@ function loginWithEmailCred() {
         deviceId
       });
 
-      // This is very hacky, should clean up firebase API usage
+      // This is very hacky, should clean up API usage
       try {
-        let credential = notion.api.firebase.app.firebase_.auth.EmailAuthProvider.credentialWithLink(
+        let credential = Notion.credentialWithLink(
           email,
           "https://console.neurosity.co/account-manager?apiKey=none&mode=signIn&oobCode=" +
             code +
             "&continueUrl=https://console.neurosity.co/vscode&lang=en"
         );
 
-        notion.api.firebase.app
+        notion
           .auth()
           .signInWithCredential(credential)
           .then(
