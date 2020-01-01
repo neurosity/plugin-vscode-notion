@@ -1,8 +1,16 @@
 import * as vscode from "vscode";
 import { Notion } from "@neurosity/notion";
+import * as path from "path";
 // import { BufferedMetricsLogger } from "datadog-metrics";
 import { Chart } from "frappe-charts";
-import { filter, map, scan, bufferCount, tap, share } from "rxjs/operators";
+import {
+  filter,
+  map,
+  scan,
+  bufferCount,
+  tap,
+  share
+} from "rxjs/operators";
 import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 
 // import Analytics from "electron-google-analytics";
@@ -13,6 +21,9 @@ import { Subject, pipe } from "rxjs";
 import * as osxBrightness from "osx-brightness";
 
 const regression = require("regression");
+
+import { initiateLogin } from "./auth";
+import { getViewContent } from "./view";
 
 let mindStateStatusBarItem: vscode.StatusBarItem;
 
@@ -27,11 +38,42 @@ const verbose = true;
 
 export async function activate(context: vscode.ExtensionContext) {
   try {
+    // create a new status bar item that we can now manage
+    mindStateStatusBarItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Right,
+      999
+    );
+
+    mindStateStatusBarItem.text = `Notion`;
+    mindStateStatusBarItem.show();
+
     const { subscriptions } = context;
     const config = vscode.workspace.getConfiguration("notion");
     const deviceId: string = config.get("deviceId") || "";
-    const email: string = config.get("email") || "";
-    const password: string = config.get("password") || "";
+
+    if (!deviceId) {
+      mindStateStatusBarItem.text = `Notion: enter device id`;
+      return;
+    }
+
+    const notion = new Notion({
+      deviceId
+    });
+
+    //initiateLogin(notion);
+
+    console.log("pre user");
+    notion.onAuthStateChanged().subscribe(async user => {
+      console.log("user", user);
+
+      if (!user) {
+        vscode.window.showInformationMessage(`Please login`);
+        mindStateStatusBarItem.text = `Notion: please login`;
+        await initiateLogin(notion);
+      } else {
+        mindStateStatusBarItem.text = `Notion: logged in`;
+      }
+    });
 
     let currentStatus = {
       charging: false,
@@ -40,160 +82,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const notionAvgScoreCommandId = "notion.showAverageScore";
 
-    // create a new status bar item that we can now manage
-    mindStateStatusBarItem = vscode.window.createStatusBarItem(
-      vscode.StatusBarAlignment.Right,
-      999
-    );
     mindStateStatusBarItem.command = notionAvgScoreCommandId;
     subscriptions.push(mindStateStatusBarItem);
 
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
-
-    function getWebviewContent() {
-      return `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-      <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-      <title>Notion</title>
-      <style>
-      body {
-        background-color: #00031a;
-      }
-      h1, h2, h3 {
-        text-color: #5c717b;
-        text-align: center;
-      }
-      </style>
-  </head>
-  <body>
-    <div id="app">
-      <h1>Notion by Neurosity</h1>
-      <h2>{{ headline }}</h2>
-      <h3>{{ doNotDisturbMessage }}</h3>
-      <h3>{{ paceMessage }}</h3>
-      <h3>{{ earthMessage }}</h3>
-      <h3>{{ notionMessage }}</h3>
-      <h3>{{ flowMessage }}</h3>
-      <div id="graph" style="width:600px;height:250px;margin:auto;"></div>
-    </div>
-
-    <script>
-      const app = new Vue({
-          el: '#app',
-          data: {
-            paceTime: '',
-            notionTime: '',
-            earthTime: '',
-            headline: '',
-            doNotDisturb: false,
-            flowStage: '',
-            score: NaN
-          },
-          computed: {
-            paceMessage() {
-              return "You're on pace to work " + this.paceTime + " minutes this hour.";
-            },
-            earthMessage() {
-              return "Earth time elapsed " + this.earthTime + ".";
-            },
-            notionMessage() {
-              return "True time " + this.notionTime + ".";
-            },
-            doNotDisturbMessage() {
-              return "Do not disturb is " + (this.doNotDisturb ? "active" : "not active");
-            },
-            flowMessage() {
-              const flowScore = Math.floor(this.score*100);
-              return "Flow stage " + this.flowStage + " with instant flow score of " + flowScore;
-            }
-          }
-      });
-      const vscode = acquireVsCodeApi();
-      
-      
-      function rand() {
-        return Math.random();
-      }
-
-      let windowLoaded = false;
-      let loadedInitDataInGraph = false;
-
-      window.onload = () => {
-        windowLoaded = true;
-        console.log("Window loaded");
-        vscode.postMessage({
-          command: 'didLoad'
-        });
-      }   
-      
-      // Handle the message inside the webview
-      window.addEventListener('message', event => {
-
-        const message = event.data; // The JSON data our extension sent
-        if (message.command === 'newFlowValue') {
-          
-          app.paceTime = message.paceTime;
-          app.notionTime = message.notionTime;
-          app.earthTime = message.earthTime;
-          app.score = message.score;
-          app.doNotDisturb = message.doNotDisturb;
-          app.flowStage = message.state.str;
-          
-          const time = new Date();
-
-          console.log('message', message);
-
-          if (loadedInitDataInGraph) {
-            let update = {
-              x:  [[time]],
-              y: [[message.state.val]]
-            }
-            
-            Plotly.extendTraces('graph', update, [0])   
-          } else {
-            loadedInitDataInGraph = true;
-            var data = [{
-              x: [time], 
-              y: [0],
-              mode: 'lines',
-              line: {color: '#80CAF6'}
-            }] 
-          
-            Plotly.plot('graph', data);  
-          }
-        
-       
-        } else if (message.command === 'oldFlowValues') {
-          // loadedInitDataInGraph = true;
-          // const dateArray = message.dateArray;
-          // const flowStates = message.flowStates;
-      
-          // var data = [{
-          //   x: dateArray, 
-          //   y: flowStates,
-          //   mode: 'lines',
-          //   line: {color: '#80CAF6'}
-          // }] 
-          
-          // Plotly.plot('graph', data);   
-        } else if (message.command === 'notionStatus') {
-          if (message.charging) {
-            app.headline = "Invest in yourself, unplug Notion and get in the zone";
-          } else if (message.connected) {
-            app.headline = "Notion is active";
-          } else {
-            app.headline = "Notion is not connected";
-          }
-        }
-      });
-    </script>
-  </body>
-  </html>`;
-    }
 
     subscriptions.push(
       vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
@@ -210,17 +102,30 @@ export async function activate(context: vscode.ExtensionContext) {
         } else {
           // Create and show a new webview
           console.log("Create and show a new webview");
+
+          if (!columnToShowIn) {
+            return;
+          }
+
           currentPanel = vscode.window.createWebviewPanel(
             "notion", // Identifies the type of the webview. Used internally
             "Notion Information", // Title of the panel displayed to the user
             columnToShowIn, // Editor column to show the new webview panel in.
             {
               // Enable scripts in the webview
-              enableScripts: true
+              enableScripts: true,
+              localResourceRoots: [
+                vscode.Uri.file(
+                  path.join(context.extensionPath, "build")
+                )
+              ]
             }
           );
 
-          currentPanel.webview.html = getWebviewContent();
+          currentPanel.webview.html = getViewContent(
+            context,
+            currentPanel
+          );
 
           currentPanel.webview.postMessage({
             ...currentStatus,
@@ -258,10 +163,6 @@ export async function activate(context: vscode.ExtensionContext) {
     mindStateStatusBarItem.text = `Enter user name, device id and password`;
     mindStateStatusBarItem.show();
 
-    if (!deviceId || !email || !password) {
-      return;
-    }
-
     mindStateStatusBarItem.text = "Notion";
 
     const usr = ua("UA-119018391-2", { uid: deviceId });
@@ -283,15 +184,6 @@ export async function activate(context: vscode.ExtensionContext) {
     };
 
     usr.event("notion_interaction", "VSCode Session Started");
-
-    const notion = new Notion({
-      deviceId
-    });
-
-    await notion.login({
-      email,
-      password
-    });
 
     let runningAverageCalmScore = 0.0;
     let runningAverageFocusScore = 0.0;
@@ -435,9 +327,9 @@ export async function activate(context: vscode.ExtensionContext) {
       } else {
         const timeInHours = Math.floor(timeInMinutes / 60);
         timeInMinutes = timeInMinutes % 60;
-        return `${timeInHours}:${padLeftZero(timeInMinutes)}:${padLeftZero(
-          timeInSeconds
-        )}`;
+        return `${timeInHours}:${padLeftZero(
+          timeInMinutes
+        )}:${padLeftZero(timeInSeconds)}`;
       }
     }
 
@@ -455,7 +347,9 @@ export async function activate(context: vscode.ExtensionContext) {
         paceArray.shift();
       } else {
         const numElementsInPaceArray = paceArray.length; // happens to be one per second
-        currentPaceMultiplier = getPaceMultiplier(numElementsInPaceArray);
+        currentPaceMultiplier = getPaceMultiplier(
+          numElementsInPaceArray
+        );
       }
       paceTime = sumArray(paceArray) * currentPaceMultiplier;
       updateMindPace();
@@ -486,7 +380,8 @@ export async function activate(context: vscode.ExtensionContext) {
         currentMindPace = paces.green;
       }
       if (currentMindPace !== prevMindPace) {
-        if (verbose) console.log(`New mind pace is ${currentMindPace.str}`);
+        if (verbose)
+          console.log(`New mind pace is ${currentMindPace.str}`);
         controlDoNotDisturb();
         usr
           .event(
@@ -537,7 +432,10 @@ export async function activate(context: vscode.ExtensionContext) {
       } else if (currentStatus.charging && !mockdata) {
         mindStateStatusBarItem.text =
           "$(circle-slash) Notion is charging $(circle-slash)";
-      } else if (currentFlowState === states.initializing && !mockdata) {
+      } else if (
+        currentFlowState === states.initializing &&
+        !mockdata
+      ) {
         mindStateStatusBarItem.text = `Notion is initializing, please wait.`;
       } else {
         if (mockdata) {
@@ -617,7 +515,10 @@ export async function activate(context: vscode.ExtensionContext) {
     };
 
     const calmAverage$ = notion.calm().pipe(
-      filter(() => currentStatus.connected && currentStatus.charging === false),
+      filter(
+        () =>
+          currentStatus.connected && currentStatus.charging === false
+      ),
       averageScoreBuffer(),
       share()
     );
@@ -626,12 +527,20 @@ export async function activate(context: vscode.ExtensionContext) {
       runningAverageCalmScore = average;
       updateMindState(runningAverageCalmScore);
       usr
-        .event("notion_interaction", "Flow State Value", "value", average)
+        .event(
+          "notion_interaction",
+          "Flow State Value",
+          "value",
+          average
+        )
         .send();
     });
 
     const focusAverage$ = notion.focus().pipe(
-      filter(() => currentStatus.connected && currentStatus.charging === false),
+      filter(
+        () =>
+          currentStatus.connected && currentStatus.charging === false
+      ),
       averageScoreBuffer(),
       share()
     );
