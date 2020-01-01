@@ -29,6 +29,11 @@
           "type": "boolean",
           "default": true,
           "description": "Dim screen for a second when loosing focus."
+        },
+        "notion.doNotDisturb": {
+          "type": "boolean",
+          "default": true,
+          "description": "Activate Do Not Disturb when mind pace is high (green)."
         }
       }
     }
