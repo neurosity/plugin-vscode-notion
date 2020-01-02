@@ -129,7 +129,7 @@ export function getWebviewContent() {
   var layout = {
     title: 'Flow stages vs. time',
     xaxis: {
-      tickformat: '%H:%M:%S'
+      tickangle: 30
     },
     yaxis: {
       autotick: false,
@@ -151,11 +151,9 @@ export function getWebviewContent() {
       app.score = message.score;
       app.doNotDisturb = message.doNotDisturb;
       app.flowStage = message.state.str;
+
+      const time = message.timestamp;
       
-      const time = new Date();
-
-      console.log('time', time, 'message', message);
-
       if (loadedInitDataInGraph) {
         let update = {
           x:  [[time]],
@@ -170,7 +168,7 @@ export function getWebviewContent() {
           y: [0],
           mode: 'lines',
           line: {color: '#80CAF6'}
-        }] 
+        }]
       
         Plotly.plot('graph', data, layout, {responsive: true});  
       }

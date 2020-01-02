@@ -3,6 +3,7 @@ import { pipe } from "rxjs";
 import { map, bufferCount, filter, share } from "rxjs/operators";
 
 // import Analytics from "electron-google-analytics";
+import * as moment from "moment";
 import * as ua from "universal-analytics";
 
 import * as doNotDisturb from "@sindresorhus/do-not-disturb";
@@ -290,7 +291,7 @@ export function showBiometrics(
     notionTime += currentFlowState.timeMultiplier;
     notionTimes.push();
     realTime += 1;
-    lastDate = new Date().toString();
+    lastDate = moment(Date.now()).format("hh:mm:ss A");
     dateArray.push(lastDate);
     flowStates.push(currentFlowState.val);
 
@@ -366,6 +367,7 @@ export function showBiometrics(
         notionTime: notionTimeStr,
         earthTime: earthTimeStr,
         paceTime: paceTimeStr,
+        timestamp: lastDate,
         state: currentFlowState,
         score: runningAverageCalmScore,
         doNotDisturb: doNotDisturbEnabled

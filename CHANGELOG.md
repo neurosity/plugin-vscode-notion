@@ -1,5 +1,11 @@
 # 1.2.0
 
+## Fixes
+
+- Fix time stamps to be local time and not in 24 hour time
+
+# 1.2.0
+
 ## Enhancements
 
 - Add toggle for dim screen - closes #7
