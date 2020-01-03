@@ -18,9 +18,15 @@ const ignoreIsCharging = false;
 const mockdata = false;
 const verbose = true;
 
-let config = vscode.workspace.getConfiguration("notion");
-let dimScreen: boolean = config.get("dimScreen") || false;
-let shouldDoNotDisturb: boolean = config.get("doNotDisturb") || false;
+const kConfigDimScreen = "dimScreen";
+const kConfigDoNotDisturb = "doNotDisturb";
+
+let config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
+  "notion"
+);
+let shouldDimScreen: boolean = config.get(kConfigDimScreen) || false;
+let shouldDoNotDisturb: boolean =
+  config.get(kConfigDoNotDisturb) || false;
 
 export function showBiometrics(
   status_bar_item: vscode.StatusBarItem,
@@ -43,6 +49,14 @@ export function showBiometrics(
     vscode.window.showErrorMessage("Unable to read Notion device ID");
     return;
   }
+
+  const toggleConfigValue = (configKey: string): boolean => {
+    const config = vscode.workspace.getConfiguration("notion");
+    const currentValue = config.get(configKey) || false;
+    const newValue = !currentValue;
+    config.update(configKey, newValue, true);
+    return newValue;
+  };
 
   status_bar_item.text = "Notion";
   status_bar_item.command = notionAvgScoreCommandId;
@@ -78,10 +92,7 @@ export function showBiometrics(
 
         currentPanel.webview.html = getWebviewContent();
 
-        currentPanel.webview.postMessage({
-          ...currentStatus,
-          command: "notionStatus"
-        });
+        sendStatusToWebPanel(currentStatus);
 
         // Handle messages from the webview
         currentPanel.webview.onDidReceiveMessage(
@@ -91,13 +102,24 @@ export function showBiometrics(
                 sendStatusToWebPanel(currentStatus);
                 sendHistoricArraysToWebPanel();
                 console.log("Web view did load");
-                return;
+                break;
               case "logout":
-                console.log("Logout now!");
                 logout().catch(console.log);
                 if (currentPanel) {
                   currentPanel.dispose();
                 }
+                break;
+              case "toggleDimScreen":
+                shouldDimScreen = toggleConfigValue(kConfigDimScreen);
+                break;
+              case "toggleDoNotDisturb":
+                shouldDoNotDisturb = toggleConfigValue(
+                  kConfigDoNotDisturb
+                );
+                if (doNotDisturbEnabled) {
+                  disableDoNotDisturb();
+                }
+                break;
             }
           },
           undefined,
@@ -140,18 +162,24 @@ export function showBiometrics(
   let runningAverageCalmScore = 0.0;
 
   const sendStatusToWebPanel = (status: any) => {
+    config = vscode.workspace.getConfiguration("notion");
+    shouldDimScreen = config.get(kConfigDimScreen) || false;
+    shouldDoNotDisturb = config.get(kConfigDoNotDisturb) || false;
     if (currentPanel) {
       // Send a message to our webview.
       // You can send any JSON serializable data.
       currentPanel.webview.postMessage({
         ...status,
+        shouldDoNotDisturb,
+        shouldDimScreen,
         command: "notionStatus"
       });
-      console.log("Sent status to currentPanel");
-    } else {
-      console.log("No currentPanel");
     }
   };
+
+  setInterval(() => {
+    sendStatusToWebPanel(currentStatus);
+  }, 500);
 
   const sendHistoricArraysToWebPanel = () => {
     if (currentPanel) {
@@ -405,32 +433,40 @@ export function showBiometrics(
 
   let doNotDisturbEnabled = false;
 
+  const disableDoNotDisturb = () => {
+    doNotDisturbEnabled = false;
+    doNotDisturb
+      .disable()
+      .then(() => {
+        if (verbose) console.log("Do not disturb DISABLED");
+      })
+      .catch(console.log);
+  };
+
+  const enableDoNotDisturb = () => {
+    doNotDisturb
+      .enable()
+      .then(() => {
+        if (verbose) console.log("Do not disturb ENABLED");
+      })
+      .catch(console.log);
+    doNotDisturbEnabled = true;
+  };
+
   const controlDoNotDisturb = () => {
     if (currentMindPace === paces.green) {
-      if (doNotDisturbEnabled === false) {
-        doNotDisturb
-          .enable()
-          .then(() => {
-            if (verbose) console.log("Do not disturb ENABLED");
-          })
-          .catch(console.log);
-        doNotDisturbEnabled = true;
+      if (!doNotDisturbEnabled) {
+        enableDoNotDisturb();
       }
     } else {
       if (doNotDisturbEnabled) {
-        doNotDisturbEnabled = false;
-        doNotDisturb
-          .disable()
-          .then(() => {
-            if (verbose) console.log("Do not disturb DISABLED");
-          })
-          .catch(console.log);
+        disableDoNotDisturb();
       }
     }
   };
 
   const controlMacScreenBrightness = (brightness: number) => {
-    if (dimScreen) {
+    if (shouldDimScreen) {
       return osxBrightness.set(brightness);
     }
   };

@@ -23,17 +23,17 @@
         "notion.deviceId": {
           "type": "string",
           "default": "",
-          "description": "Your unique Notion Device ID"
+          "description": "Your unique Notion Device ID."
         },
         "notion.dimScreen": {
           "type": "boolean",
-          "default": true,
-          "description": "Dim screen for a second when loosing focus."
+          "default": false,
+          "description": "Dim screen for a second when loosing focus. Only works on macOS - see issue #13."
         },
         "notion.doNotDisturb": {
           "type": "boolean",
-          "default": true,
-          "description": "Activate Do Not Disturb when mind pace is high (green)."
+          "default": false,
+          "description": "Activate Do Not Disturb when mind pace is high. Only works on macOS - see issue #8."
         }
       }
     }

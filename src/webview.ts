@@ -45,12 +45,21 @@ export function getWebviewContent() {
 <div id="app">
   <h1>VSCode Notion Extension</h1>
   <h2>{{ headlineMessage }}</h2>
-  <h3 v-if="showText">{{ doNotDisturbMessage }}</h3>
+  <h3 v-if="showText && shouldDoNotDisturb">{{ doNotDisturbMessage }}</h3>
   <h3 v-if="showText">{{ paceMessage }}</h3>
   <h3 v-if="showText">{{ earthMessage }}</h3>
   <h3 v-if="showText">{{ notionMessage }}</h3>
   <h3 v-if="showText">{{ flowMessage }}</h3>
   <div id="graph" style="margin:auto;"></div>
+  <h2>Settings</h2>
+  <div>
+    <label for="shouldDimScreenCheckbox">Dim screen when getting distracted</label>
+    <input type="checkbox" id="shouldDimScreenCheckbox" v-on:click="toggleDimScreen" v-model="shouldDimScreen">
+  </div>
+  <div>
+    <label for="shouldDoNotDisturbCheckbox">Automatically enter Do Not Disturb mode when focused</label>
+    <input type="checkbox" id="shouldDoNotDisturbCheckbox" v-on:click="toggleDoNotDisturb" v-model="shouldDoNotDisturb">
+  </div>
   <div class="user-nav">
     <button class="logout" v-on:click="logout">Logout</button>
   </div>
@@ -69,7 +78,9 @@ export function getWebviewContent() {
         charging: false,
         connected: false,
         flowStage: '',
-        score: NaN
+        score: NaN,
+        shouldDimScreen: false,
+        shouldDoNotDisturb: false
       },
       computed: {
         paceMessage() {
@@ -101,12 +112,36 @@ export function getWebviewContent() {
         },
         showText() {
           return this.connected && !this.charging && !isNaN(this.score);
+        },
+        doNotDisturbToggleMessage() {
+          if (this.shouldDoNotDisturb) {
+            return "Automatically enter Do Not Disturb mode";
+          } else {
+            return "Do Not Disturb will not activate";
+          }
+        },
+        dimScreenToggleMessage() {
+          if (this.shouldDimScreen) {
+            return "Flash the screen when disctracted";
+          } else {
+            return "Do not flash the screen when distracted";
+          }
         }
       },
       methods: {
         logout(event) {
           vscode.postMessage({
             command: 'logout'
+          });
+        },
+        toggleDimScreen(event) {
+          vscode.postMessage({
+            command: 'toggleDimScreen'
+          });
+        },
+        toggleDoNotDisturb(event) {
+          vscode.postMessage({
+            command: 'toggleDoNotDisturb'
           });
         }
       }
@@ -190,8 +225,11 @@ export function getWebviewContent() {
         Plotly.plot('graph', data, layout, {responsive: true});
       }
     } else if (message.command === 'notionStatus') {
+      console.log("message", message);
       app.charging = message.charging;
       app.connected = message.connected;
+      app.shouldDimScreen = message.shouldDimScreen;
+      app.shouldDoNotDisturb = message.shouldDoNotDisturb;
     }
   });
 </script>
