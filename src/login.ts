@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-import { Notion } from "@neurosity/notion";
+import { Notion, NotionUser } from "@neurosity/notion";
 
 export let notion: any;
 export let logged_in: boolean = false;
@@ -89,9 +89,15 @@ export function loginFromSavedState(saved_state: any) {
     // This try/catch might be able to detect invalid saved state, as
     // it will probably throw an error
     try {
+      const user = new NotionUser(
+        saved_state,
+        saved_state.stsTokenManager,
+        saved_state
+      );
+
       notion
         .auth()
-        .updateCurrentUser(saved_state)
+        .updateCurrentUser(user)
         .then(() => {
           logged_in = true;
           if (login_callback) login_callback();
