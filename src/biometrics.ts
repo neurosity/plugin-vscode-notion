@@ -10,9 +10,10 @@ import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 import * as osxBrightness from "osx-brightness";
 
 import { logout } from "./login";
-import { getWebviewContent } from "./webview";
 
 const regression = require("regression");
+const path = require("path");
+const fs = require("fs");
 
 const ignoreIsCharging = false;
 const mockdata = false;
@@ -25,10 +26,10 @@ let config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
   "notion"
 );
 let shouldDimScreen: boolean = config.get(kConfigDimScreen) || false;
-let shouldDoNotDisturb: boolean =
-  config.get(kConfigDoNotDisturb) || false;
+let shouldDoNotDisturb: boolean = config.get(kConfigDoNotDisturb) || false;
 
 export function showBiometrics(
+  context: vscode.ExtensionContext,
   status_bar_item: vscode.StatusBarItem,
   subscriptions: any,
   notion: any
@@ -90,7 +91,14 @@ export function showBiometrics(
           }
         );
 
-        currentPanel.webview.html = getWebviewContent();
+        let webviewHtmlPath: vscode.Uri = vscode.Uri.file(
+          path.join(context.extensionPath, "layout", "view.html")
+        );
+
+        currentPanel.webview.html = fs.readFileSync(
+          webviewHtmlPath.fsPath,
+          "utf8"
+        );
 
         sendStatusToWebPanel(currentStatus);
 
@@ -113,9 +121,7 @@ export function showBiometrics(
                 shouldDimScreen = toggleConfigValue(kConfigDimScreen);
                 break;
               case "toggleDoNotDisturb":
-                shouldDoNotDisturb = toggleConfigValue(
-                  kConfigDoNotDisturb
-                );
+                shouldDoNotDisturb = toggleConfigValue(kConfigDoNotDisturb);
                 if (doNotDisturbEnabled) {
                   disableDoNotDisturb();
                 }
@@ -357,8 +363,7 @@ export function showBiometrics(
       currentMindPace = paces.green;
     }
     if (currentMindPace !== prevMindPace) {
-      if (verbose)
-        console.log(`New mind pace is ${currentMindPace.str}`);
+      if (verbose) console.log(`New mind pace is ${currentMindPace.str}`);
       if (shouldDoNotDisturb) controlDoNotDisturb();
       usr
         .event(
@@ -489,9 +494,7 @@ export function showBiometrics(
         }
 
         console.log(
-          `${new Date().toLocaleTimeString()} ${
-            currentFlowState.star
-          } ${score}`
+          `${new Date().toLocaleTimeString()} ${currentFlowState.star} ${score}`
         );
         break;
       }
@@ -499,9 +502,7 @@ export function showBiometrics(
   };
 
   const calmAverage$ = notion.calm().pipe(
-    filter(
-      () => currentStatus.connected && currentStatus.charging === false
-    ),
+    filter(() => currentStatus.connected && currentStatus.charging === false),
     averageScoreBuffer(),
     share()
   );

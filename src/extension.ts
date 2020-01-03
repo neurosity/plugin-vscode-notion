@@ -43,7 +43,7 @@ export async function activate(context: vscode.ExtensionContext) {
       loginStatusBarItem.hide();
 
       if (!biometrics_running) {
-        showBiometrics(mindStateStatusBarItem, subscriptions, notion);
+        showBiometrics(context, mindStateStatusBarItem, subscriptions, notion);
         biometrics_running = true;
       } else {
         mindStateStatusBarItem.show();
