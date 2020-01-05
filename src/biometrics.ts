@@ -10,12 +10,17 @@ import * as doNotDisturb from "@sindresorhus/do-not-disturb";
 import * as osxBrightness from "osx-brightness";
 
 import { logout } from "./login";
+import {
+  defaultPaces,
+  defaultStates,
+  getPaceMultiplier,
+  getTimeStr
+} from "./utils";
 
 const regression = require("regression");
 const path = require("path");
 const fs = require("fs");
 
-const ignoreIsCharging = false;
 const mockdata = false;
 const verbose = true;
 
@@ -126,6 +131,9 @@ export function showBiometrics(
                   disableDoNotDisturb();
                 }
                 break;
+              case "startNewSession":
+                initializeStateArrays();
+                break;
             }
           },
           undefined,
@@ -146,22 +154,6 @@ export function showBiometrics(
   );
 
   const usr = ua("UA-119018391-2", { uid: deviceId });
-
-  const trackEvent = (
-    category: string,
-    action: string,
-    label: string | undefined,
-    value: string | number | undefined
-  ) => {
-    usr
-      .event({
-        ec: category,
-        ea: action,
-        el: label,
-        ev: value
-      })
-      .send();
-  };
 
   usr.event("notion_interaction", "VSCode Session Started");
 
@@ -205,86 +197,8 @@ export function showBiometrics(
     sendStatusToWebPanel(status);
   });
 
-  let states: any = {
-    initializing: {
-      limit: {
-        calm: 0,
-        focus: 0
-      },
-      str: "Initializing",
-      star: "     ",
-      timeMultiplier: 0,
-      val: 0
-    },
-    distracted: {
-      limit: {
-        calm: 0.1,
-        focus: 0.15
-      },
-      str: "1 of 5",
-      star: "    *",
-      timeMultiplier: 0,
-      val: 1
-    },
-    grind: {
-      limit: {
-        calm: 0.16,
-        focus: 0.25
-      },
-      str: "2 of 5",
-      star: "   **",
-      timeMultiplier: 0.25,
-      val: 2
-    },
-    iterate: {
-      limit: {
-        calm: 0.2,
-        focus: 0.3
-      },
-      str: "3 of 5",
-      star: "  ***",
-      timeMultiplier: 0.75,
-      val: 3
-    },
-    create: {
-      limit: {
-        calm: 0.24,
-        focus: 0.33
-      },
-      str: "4 of 5",
-      star: " ****",
-      timeMultiplier: 0.9,
-      val: 4
-    },
-    flow: {
-      limit: {
-        calm: 1.0,
-        focus: 1.0
-      },
-      str: "5",
-      star: "*****",
-      timeMultiplier: 1.0,
-      val: 5
-    }
-  };
-
-  let paces: any = {
-    green: {
-      limit: 60 * 60,
-      str: "green",
-      val: 2
-    },
-    yellow: {
-      limit: 60 * 40,
-      str: "yellow",
-      val: 1
-    },
-    red: {
-      limit: 60 * 20,
-      str: "red",
-      val: 0
-    }
-  };
+  let states = defaultStates();
+  let paces = defaultPaces();
 
   let currentFlowState = states.initializing;
   let currentMindPace = paces.red;
@@ -294,32 +208,23 @@ export function showBiometrics(
   let paceTime = 0;
   let lastDate = new Date().toString();
   let paceArray: number[] = [];
-  let flowStates: number[] = [0];
+  let flowStates: number[] = [];
   let notionTimes: number[] = [];
-  let dateArray: string[] = [new Date().toString()];
+  let dateArray: string[] = [];
+
   const defaultPacePeriod = 60; // seconds
   const paceArrayLength = defaultPacePeriod; // 60 seconds times pace period is how long array is
-  const getPaceMultiplier = (period: number) => {
-    return (60 * 60) / period;
-  };
 
-  function padLeftZero(time: number) {
-    return `${time < 10 ? `0${time}` : time}`;
-  }
-
-  function getTimeStr(time: number) {
-    const timeInSeconds = Math.round(time % 60);
-    let timeInMinutes = Math.round((time - timeInSeconds) / 60);
-    if (timeInMinutes < 60) {
-      return `${timeInMinutes}:${padLeftZero(timeInSeconds)}`;
-    } else {
-      const timeInHours = Math.floor(timeInMinutes / 60);
-      timeInMinutes = timeInMinutes % 60;
-      return `${timeInHours}:${padLeftZero(timeInMinutes)}:${padLeftZero(
-        timeInSeconds
-      )}`;
+  const initializeStateArrays = () => {
+    flowStates = [0];
+    dateArray = [new Date().toString()];
+    if (currentPanel) {
+      currentPanel.webview.postMessage({
+        command: "newSessionStarted"
+      });
     }
-  }
+  };
+  initializeStateArrays();
 
   const updateTimes = () => {
     notionTime += currentFlowState.timeMultiplier;
