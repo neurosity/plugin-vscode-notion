@@ -51,6 +51,9 @@
       <h3 v-if="showText">{{ earthMessage }}</h3>
       <h3 v-if="showText">{{ notionMessage }}</h3>
       <h3 v-if="showText">{{ flowMessage }}</h3>
+      <div class="user-nav">
+        <button class="reset" v-on:click="reset">New Session</button>
+      </div>
       <div id="graph" style="margin:auto;"></div>
       <h2>Settings</h2>
       <div>
@@ -159,6 +162,11 @@
               command: "logout"
             });
           },
+          reset(event) {
+            vscode.postMessage({
+              command: "startNewSession"
+            });
+          },
           toggleDimScreen(event) {
             vscode.postMessage({
               command: "toggleDimScreen"
@@ -255,6 +263,8 @@
           app.connected = message.connected;
           app.shouldDimScreen = message.shouldDimScreen;
           app.shouldDoNotDisturb = message.shouldDoNotDisturb;
+        } else if (message.command === "newSessionStarted") {
+          Plotly.deleteTraces("graph", 0);
         }
       });
     </script>
