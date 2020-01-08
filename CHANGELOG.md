@@ -1,3 +1,19 @@
+# 1.3.0
+
+## Enhancements
+
+- Move view files to a new location 
+- Restart session button added
+- Toggle for dim screen and do not disturb added to view
+
+## Known Issues
+
+- Intermitent issue where device can fail to restart connection after a disconnection.
+
+## Roadmap
+
+- Improve layout with a 2.0.0 release
+
 # 1.2.1
 
 ## Fixes
