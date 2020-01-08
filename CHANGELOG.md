@@ -8,7 +8,7 @@
 
 ## Known Issues
 
-- Intermitent issue where device can fail to restart connection after a disconnection.
+- Intermittent issue where device can fail to restart connection after a disconnection.
 
 ## Roadmap
 
