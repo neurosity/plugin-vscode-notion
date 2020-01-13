@@ -4,7 +4,7 @@ First and foremost, Welcome!
 
 Thank you for visiting Neurosity's VSCode repository. The goal for this extension is to provide objective insights into the mind to boost productivity.
 
-![Notion on Model](images/notion-preview.png)
+![Notion on Model](images/notionVSCodeExtension.png)
 
 This document (the README file) is a hub to give you some information about the project. Jump straight to one of the sections below, or just scroll down to find out more.
 

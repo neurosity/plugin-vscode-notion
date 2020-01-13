@@ -1,3 +1,9 @@
+# 1.3.2
+
+## Enhancements
+
+- Fix banner image with real screen shot of vscode extension
+
 # 1.3.1
 
 ## Bug Fixes
