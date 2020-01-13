@@ -221,9 +221,7 @@
           };
 
           Plotly.extendTraces("graph", update, [0]);
-          console.log("newFlowValue if");
         } else {
-          console.log("newFlowValue else");
           loadedInitDataInGraph = true;
           var data = [
             {
@@ -237,7 +235,6 @@
           Plotly.plot("graph", data, layout, { responsive: true });
         }
       } else if (message.command === "oldFlowValues") {
-        console.log("oldFlowValues", message);
         const dateArray = message.dateArray;
         const flowStates = message.flowStates;
 

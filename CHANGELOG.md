@@ -1,3 +1,14 @@
+# 1.3.1
+
+## Bug Fixes
+
+- Remove verbose logging
+- Immediately start getting metrics using new incrementalBuffer pipe - thanks @alexcastillo
+
+## Known Issues
+
+- Intermittent issue where device can fail to restart connection after a disconnection. [#33](https://github.com/neurosity/notion-js/issues/33)
+
 # 1.3.0
 
 ## Enhancements
@@ -8,7 +19,7 @@
 
 ## Known Issues
 
-- Intermittent issue where device can fail to restart connection after a disconnection.
+- Intermittent issue where device can fail to restart connection after a disconnection. [#33](https://github.com/neurosity/notion-js/issues/33)
 
 ## Roadmap
 

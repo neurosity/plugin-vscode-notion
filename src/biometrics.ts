@@ -16,6 +16,7 @@ import {
   getPaceMultiplier,
   getTimeStr
 } from "./utils";
+import { incrementalBuffer } from "./utils/incrementalBuffer";
 
 const regression = require("regression");
 const path = require("path");
@@ -73,7 +74,7 @@ export function showBiometrics(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
       const columnToShowIn =
         typeof vscode.window.activeTextEditor !== "undefined" &&
-        typeof vscode.window.activeTextEditor.viewColumn !== "undefined"
+          typeof vscode.window.activeTextEditor.viewColumn !== "undefined"
           ? vscode.window.activeTextEditor.viewColumn
           : vscode.ViewColumn.Beside;
 
@@ -445,10 +446,14 @@ export function showBiometrics(
   });
 }
 
-function averageScoreBuffer(windowCount = 30, windowStep = 5) {
+function averageScoreBuffer(maxItems = 30, minItems = 4) {
   return pipe(
     map((metric: any) => metric.probability),
-    bufferCount(windowCount, windowStep),
+    incrementalBuffer({
+      maxItems,
+      minItems,
+      incrementCountBy: 1
+    }),
     map((probabilities: number[]): number => {
       return (
         probabilities.reduce(
