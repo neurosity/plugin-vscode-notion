@@ -4,6 +4,7 @@
 
 - Remove verbose logging
 - Immediately start getting metrics using new incrementalBuffer pipe - thanks @alexcastillo
+- Bug where clicking a toggel button in view could flash check/or-unchecked quickly before showing the correct value again.
 
 ## Known Issues
 

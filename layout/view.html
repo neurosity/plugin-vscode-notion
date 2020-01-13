@@ -82,9 +82,6 @@
     const app = new Vue({
       el: "#app",
       data: {
-        battery: NaN,
-        charging: false,
-        connected: false,
         doNotDisturb: false,
         earthTime: "",
         flowStage: "",
@@ -92,7 +89,8 @@
         paceTime: "",
         score: NaN,
         shouldDimScreen: false,
-        shouldDoNotDisturb: false
+        shouldDoNotDisturb: false,
+        status: null
       },
       computed: {
         paceMessage() {
@@ -122,18 +120,30 @@
           );
         },
         headlineMessage() {
-          if (this.connected === false) {
-            return "Notion not connected";
-          } else if (this.charging) {
-            return "Notion is in sleep mode";
-          } else if (isNaN(this.score)) {
-            return "Initializing...";
-          } else {
-            return `Notion is active with ${this.battery}% battery`;
+          const {
+            state,
+            sleepMode,
+            sleepModeReason,
+            updatingProgress,
+            battery
+          } = this.status || {};
+
+          if (sleepMode) {
+            return `The device is in sleep mode while it's ${sleepModeReason}`;
+          } else if (state === "online") {
+            return `Notion is online with ${battery}% battery remaining`;
+          } else if (state === "offline") {
+            return "Offline";
+          } else if (state === "updating") {
+            return `Updating OS... ${updatingProgress}%`;
+          } else if (state === "booting") {
+            return "Starting OS...";
+          } else if (state === "shuttingOff") {
+            return "Shutting off...";
           }
         },
         showText() {
-          return this.connected && !this.charging && !isNaN(this.score);
+          return this.status.connected && !this.status.charging && !isNaN(this.score);
         },
         doNotDisturbToggleMessage() {
           if (this.shouldDoNotDisturb) {
@@ -250,12 +260,14 @@
           loadedInitDataInGraph = true;
           Plotly.plot("graph", data, layout, { responsive: true });
         }
-      } else if (message.command === "notionStatus") {
-        app.battery = message.battery;
-        app.charging = message.charging;
-        app.connected = message.connected;
+      } else if (message.command === "status") {
+        app.status = message.status;
+        console.log("Status", status);
+      } else if (message.command === "config") {
         app.shouldDimScreen = message.shouldDimScreen;
         app.shouldDoNotDisturb = message.shouldDoNotDisturb;
+        console.log("Status", status);
+
       } else if (message.command === "newSessionStarted") {
         console.log("New session started");
         loadedInitDataInGraph = false;

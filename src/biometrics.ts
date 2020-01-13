@@ -58,11 +58,20 @@ export function showBiometrics(
   }
 
   const toggleConfigValue = (configKey: string): boolean => {
+    stopConfigToViewSync();
     const config = vscode.workspace.getConfiguration("notion");
     const currentValue = config.get(configKey) || false;
     const newValue = !currentValue;
     config.update(configKey, newValue, true);
+    startConfigToViewSync();
     return newValue;
+  };
+
+  const getConfigValue = (configKey: string): any => {
+    config = vscode.workspace.getConfiguration(
+      "notion"
+    );
+    return config.get(configKey);
   };
 
   status_bar_item.text = "Notion";
@@ -160,7 +169,7 @@ export function showBiometrics(
 
   let runningAverageCalmScore = 0.0;
 
-  const sendStatusToWebPanel = (status: any) => {
+  const sendConfigToWebPanel = () => {
     config = vscode.workspace.getConfiguration("notion");
     shouldDimScreen = config.get(kConfigDimScreen) || false;
     shouldDoNotDisturb = config.get(kConfigDoNotDisturb) || false;
@@ -168,17 +177,39 @@ export function showBiometrics(
       // Send a message to our webview.
       // You can send any JSON serializable data.
       currentPanel.webview.postMessage({
-        ...status,
         shouldDoNotDisturb,
         shouldDimScreen,
-        command: "notionStatus"
+        command: "config"
       });
     }
   };
 
-  setInterval(() => {
-    sendStatusToWebPanel(currentStatus);
-  }, 500);
+  const sendStatusToWebPanel = (status: any) => {
+    if (currentPanel) {
+      // Send a message to our webview.
+      // You can send any JSON serializable data.
+      currentPanel.webview.postMessage({
+        status,
+        command: "status"
+      });
+    }
+  };
+
+  let configToViewSyncInterval: NodeJS.Timeout | null = null;
+
+  const startConfigToViewSync = () => {
+    configToViewSyncInterval = setInterval(() => {
+      sendConfigToWebPanel();
+    }, 500);
+  }
+  startConfigToViewSync();
+
+  const stopConfigToViewSync = () => {
+    if (configToViewSyncInterval) {
+      clearInterval(configToViewSyncInterval);
+      configToViewSyncInterval = null;
+    }
+  }
 
   const sendHistoricArraysToWebPanel = () => {
     if (currentPanel) {
@@ -194,7 +225,6 @@ export function showBiometrics(
 
   notion.status().subscribe((status: any) => {
     currentStatus = status;
-    console.log("status", currentStatus);
     sendStatusToWebPanel(status);
   });
 
@@ -217,6 +247,9 @@ export function showBiometrics(
   const paceArrayLength = defaultPacePeriod; // 60 seconds times pace period is how long array is
 
   const initializeStateArrays = () => {
+    notionTime = 0;
+    realTime = 0;
+    paceTime = 0;
     flowStates = [0];
     dateArray = [new Date().toString()];
     if (currentPanel) {
