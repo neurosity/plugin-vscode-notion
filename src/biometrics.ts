@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { pipe } from "rxjs";
-import { map, bufferCount, filter, share } from "rxjs/operators";
+import { map, bufferCount, filter, share, tap } from "rxjs/operators";
 
 // import Analytics from "electron-google-analytics";
 import * as moment from "moment";
@@ -22,17 +22,22 @@ const regression = require("regression");
 const path = require("path");
 const fs = require("fs");
 
+const isMac = process.platform === "darwin";
+
 const mockdata = false;
 const verbose = true;
 
 const kConfigDimScreen = "dimScreen";
 const kConfigDoNotDisturb = "doNotDisturb";
+const kConfigShowDistractedNotification = "showDistractedNotification";
 
 let config: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration(
   "notion"
 );
 let shouldDimScreen: boolean = config.get(kConfigDimScreen) || false;
 let shouldDoNotDisturb: boolean = config.get(kConfigDoNotDisturb) || false;
+let shouldShowDistractedNotification =
+  config.get(kConfigShowDistractedNotification) || false;
 
 export function showBiometrics(
   context: vscode.ExtensionContext,
@@ -68,9 +73,7 @@ export function showBiometrics(
   };
 
   const getConfigValue = (configKey: string): any => {
-    config = vscode.workspace.getConfiguration(
-      "notion"
-    );
+    config = vscode.workspace.getConfiguration("notion");
     return config.get(configKey);
   };
 
@@ -83,7 +86,7 @@ export function showBiometrics(
     vscode.commands.registerCommand(notionAvgScoreCommandId, () => {
       const columnToShowIn =
         typeof vscode.window.activeTextEditor !== "undefined" &&
-          typeof vscode.window.activeTextEditor.viewColumn !== "undefined"
+        typeof vscode.window.activeTextEditor.viewColumn !== "undefined"
           ? vscode.window.activeTextEditor.viewColumn
           : vscode.ViewColumn.Beside;
 
@@ -135,6 +138,11 @@ export function showBiometrics(
               case "toggleDimScreen":
                 shouldDimScreen = toggleConfigValue(kConfigDimScreen);
                 break;
+              case "toggleShowDistractedNotification":
+                shouldShowDistractedNotification = toggleConfigValue(
+                  kConfigShowDistractedNotification
+                );
+                break;
               case "toggleDoNotDisturb":
                 shouldDoNotDisturb = toggleConfigValue(kConfigDoNotDisturb);
                 if (doNotDisturbEnabled) {
@@ -173,12 +181,16 @@ export function showBiometrics(
     config = vscode.workspace.getConfiguration("notion");
     shouldDimScreen = config.get(kConfigDimScreen) || false;
     shouldDoNotDisturb = config.get(kConfigDoNotDisturb) || false;
+    shouldShowDistractedNotification =
+      config.get(kConfigShowDistractedNotification) || false;
     if (currentPanel) {
       // Send a message to our webview.
       // You can send any JSON serializable data.
       currentPanel.webview.postMessage({
         shouldDoNotDisturb,
         shouldDimScreen,
+        shouldShowDistractedNotification,
+        platform: process.platform,
         command: "config"
       });
     }
@@ -201,7 +213,7 @@ export function showBiometrics(
     configToViewSyncInterval = setInterval(() => {
       sendConfigToWebPanel();
     }, 500);
-  }
+  };
   startConfigToViewSync();
 
   const stopConfigToViewSync = () => {
@@ -209,7 +221,7 @@ export function showBiometrics(
       clearInterval(configToViewSyncInterval);
       configToViewSyncInterval = null;
     }
-  }
+  };
 
   const sendHistoricArraysToWebPanel = () => {
     if (currentPanel) {
@@ -415,6 +427,12 @@ export function showBiometrics(
     }
   };
 
+  const controlShowDistractedNotification = () => {
+    if (shouldShowDistractedNotification) {
+      vscode.window.showInformationMessage("Loosing focus...");
+    }
+  };
+
   const updateMindState = (score: number) => {
     const prevMindState = currentFlowState;
     for (let key in states) {
@@ -458,7 +476,8 @@ export function showBiometrics(
     bufferCount(5, 1),
     map((averages: number[]) => {
       const points = averages.map((average, i) => [i + 2, average]);
-      const [slope] = regression.linear(points).equation;
+      const [slope] = regression.linear(points, { precision: 3 }).equation;
+
       return slope;
     })
   );
@@ -466,12 +485,15 @@ export function showBiometrics(
   calmTrend$.subscribe((trend: number) => {
     console.log("Trend: ", trend);
     if (trend < 0) {
-      if (trend < -0.01) {
+      if (trend < -0.005) {
         console.log("Loosing focus");
-        controlMacScreenBrightness(0.5);
-        setTimeout(() => {
-          controlMacScreenBrightness(1);
-        }, 1000);
+        if (isMac) {
+          controlMacScreenBrightness(0.5);
+          setTimeout(() => {
+            controlMacScreenBrightness(1);
+          }, 1000);
+        }
+        controlShowDistractedNotification();
       }
     } else if (trend > 0) {
       console.log("Gaining focus");
@@ -494,6 +516,6 @@ function averageScoreBuffer(maxItems = 30, minItems = 4) {
         ) / probabilities.length
       );
     }),
-    map(average => Number(average.toFixed(2)))
+    map(average => Number(average.toFixed(3)))
   );
 }
