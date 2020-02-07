@@ -1,3 +1,9 @@
+# 1.4.0
+
+## Enhancements
+
+- add support for showing a notification message when loosing focus
+
 # 1.3.2
 
 ## Enhancements
@@ -20,7 +26,7 @@
 
 ## Enhancements
 
-- Move view files to a new location 
+- Move view files to a new location
 - Restart session button added
 - Toggle for dim screen and do not disturb added to view
 
