@@ -1,3 +1,9 @@
+# 1.4.1
+
+## Bug Fixes
+
+- Fix issue where show distracted notificaiton did not work
+
 # 1.4.0
 
 ## Enhancements

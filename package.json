@@ -34,6 +34,11 @@
           "type": "boolean",
           "default": false,
           "description": "Activate Do Not Disturb when mind pace is high. Only works on macOS - see issue #8."
+        },
+        "notion.showDistractedNotification": {
+          "type": "boolean",
+          "default": false,
+          "description": "Display notification on screen for a second when loosing focus."
         }
       }
     }
