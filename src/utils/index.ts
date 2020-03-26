@@ -35,7 +35,7 @@ export function defaultStates(): any {
     },
     grind: {
       limit: {
-        calm: 0.16,
+        calm: 0.3,
         focus: 0.25
       },
       str: "2 of 5",
@@ -45,7 +45,7 @@ export function defaultStates(): any {
     },
     iterate: {
       limit: {
-        calm: 0.2,
+        calm: 0.4,
         focus: 0.3
       },
       str: "3 of 5",
@@ -55,7 +55,7 @@ export function defaultStates(): any {
     },
     create: {
       limit: {
-        calm: 0.24,
+        calm: 0.5,
         focus: 0.33
       },
       str: "4 of 5",
