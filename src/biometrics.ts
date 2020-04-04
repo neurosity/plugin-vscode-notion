@@ -485,7 +485,7 @@ export function showBiometrics(
   calmTrend$.subscribe((trend: number) => {
     console.log("Trend: ", trend);
     if (trend < 0) {
-      if (trend < -0.005) {
+      if (trend < -0.01) {
         console.log("Loosing focus");
         if (isMac) {
           controlMacScreenBrightness(0.5);
@@ -499,6 +499,14 @@ export function showBiometrics(
       console.log("Gaining focus");
     }
   });
+
+  const focusAverage$ = notion.focus().pipe(
+    filter(() => currentStatus.connected && currentStatus.charging === false),
+    averageScoreBuffer(),
+    share()
+  );
+
+  focusAverage$.subscribe();
 }
 
 function averageScoreBuffer(maxItems = 30, minItems = 4) {

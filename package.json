@@ -70,7 +70,7 @@
   },
   "publisher": "neurosity",
   "dependencies": {
-    "@neurosity/notion": "^4.2.5",
+    "@neurosity/notion": "^4.3.3",
     "@sindresorhus/do-not-disturb": "^1.1.0",
     "@types/regression": "^2.0.0",
     "@types/universal-analytics": "^0.4.3",

@@ -1,3 +1,9 @@
+# 1.5.0
+
+## Enhancements
+
+- Fix calm value thresholds
+
 # 1.4.1
 
 ## Bug Fixes

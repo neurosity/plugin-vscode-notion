@@ -16,63 +16,63 @@ export function defaultStates(): any {
     initializing: {
       limit: {
         calm: 0,
-        focus: 0
+        focus: 0,
       },
       str: "Initializing",
       star: "     ",
       timeMultiplier: 0,
-      val: 0
+      val: 0,
     },
     distracted: {
       limit: {
         calm: 0.1,
-        focus: 0.15
+        focus: 0.15,
       },
       str: "1 of 5",
       star: "    *",
       timeMultiplier: 0,
-      val: 1
+      val: 1,
     },
     grind: {
       limit: {
-        calm: 0.16,
-        focus: 0.25
+        calm: 0.3,
+        focus: 0.25,
       },
       str: "2 of 5",
       star: "   **",
       timeMultiplier: 0.25,
-      val: 2
+      val: 2,
     },
     iterate: {
       limit: {
-        calm: 0.2,
-        focus: 0.3
+        calm: 0.38,
+        focus: 0.3,
       },
       str: "3 of 5",
       star: "  ***",
       timeMultiplier: 0.75,
-      val: 3
+      val: 3,
     },
     create: {
       limit: {
-        calm: 0.24,
-        focus: 0.33
+        calm: 0.45,
+        focus: 0.33,
       },
       str: "4 of 5",
       star: " ****",
       timeMultiplier: 0.9,
-      val: 4
+      val: 4,
     },
     flow: {
       limit: {
         calm: 1.0,
-        focus: 1.0
+        focus: 1.0,
       },
       str: "5",
       star: "*****",
       timeMultiplier: 1.0,
-      val: 5
-    }
+      val: 5,
+    },
   };
 }
 
@@ -81,18 +81,18 @@ export function defaultPaces(): any {
     green: {
       limit: 60 * 60,
       str: "green",
-      val: 2
+      val: 2,
     },
     yellow: {
       limit: 60 * 40,
       str: "yellow",
-      val: 1
+      val: 1,
     },
     red: {
       limit: 60 * 20,
       str: "red",
-      val: 0
-    }
+      val: 0,
+    },
   };
 }
 
