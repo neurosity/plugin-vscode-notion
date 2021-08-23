@@ -361,7 +361,7 @@ export function showBiometrics(
 
   const sumArray = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
   setInterval(() => {
-    if (currentStatus.state === "online" === false && !mockdata) {
+    if (currentStatus.state !== "online" && !mockdata) {
       status_bar_item.text = `Notion not online`;
     } else if (currentStatus.charging && !mockdata) {
       status_bar_item.text = "$(zap) Notion is charging";
