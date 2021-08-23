@@ -51,7 +51,7 @@ export function showBiometrics(
 
   let currentStatus = {
     charging: false,
-    connected: false
+    state: "offline"
   };
 
   let config = vscode.workspace.getConfiguration("notion");
@@ -361,8 +361,8 @@ export function showBiometrics(
 
   const sumArray = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
   setInterval(() => {
-    if (currentStatus.connected === false && !mockdata) {
-      status_bar_item.text = `Notion not connected`;
+    if (currentStatus.state === "online" === false && !mockdata) {
+      status_bar_item.text = `Notion not online`;
     } else if (currentStatus.charging && !mockdata) {
       status_bar_item.text = "$(zap) Notion is charging";
     } else if (currentFlowState === states.initializing && !mockdata) {
@@ -459,7 +459,7 @@ export function showBiometrics(
   };
 
   const calmAverage$ = notion.calm().pipe(
-    filter(() => currentStatus.connected && currentStatus.charging === false),
+    filter(() => currentStatus.state === "online" && currentStatus.charging === false),
     averageScoreBuffer(),
     share()
   );
@@ -501,7 +501,7 @@ export function showBiometrics(
   });
 
   const focusAverage$ = notion.focus().pipe(
-    filter(() => currentStatus.connected && currentStatus.charging === false),
+    filter(() => currentStatus.state === "online" && currentStatus.charging === false),
     averageScoreBuffer(),
     share()
   );
