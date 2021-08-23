@@ -175,7 +175,7 @@
           },
           showText() {
             return (
-              this.status.connected &&
+              this.status.state === "online" &&
               !this.status.charging &&
               !isNaN(this.score)
             );
